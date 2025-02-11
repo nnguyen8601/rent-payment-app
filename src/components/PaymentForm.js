@@ -5,7 +5,7 @@ import '../styles/PaymentForm.css';
 const PaymentForm = () => {
     // Add rental properties data
     const rentalProperties = [
-        { id: 1, address: '123 Main St, Chicago, IL 60601' },
+        { id: 1, address: '123 Main St, Chicago, IL 60610' },
         { id: 2, address: '456 Park Ave, Chicago, IL 60602' },
         { id: 3, address: '789 Lake St, Chicago, IL 60603' },
         { id: 4, address: '321 State St, Chicago, IL 60604' },
