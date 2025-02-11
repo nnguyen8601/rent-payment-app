@@ -22,6 +22,9 @@ const PaymentForm = () => {
         amount: '',
     });
 
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState(null);
+
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prevState => ({
@@ -30,10 +33,48 @@ const PaymentForm = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Handle payment submission here
-        console.log('Payment submitted:', formData);
+        setIsProcessing(true);
+        setPaymentStatus(null);
+
+        try {
+            const response = await fetch('/api/process-payment', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setPaymentStatus({
+                    type: 'success',
+                    message: 'Payment processed successfully!'
+                });
+                // Clear form
+                setFormData({
+                    renterName: '',
+                    rentLocation: '',
+                    cardNumber: '',
+                    expirationDate: '',
+                    cvc: '',
+                    zipCode: '',
+                    amount: '',
+                });
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            setPaymentStatus({
+                type: 'error',
+                message: `Payment failed: ${error.message}`
+            });
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -140,8 +181,18 @@ const PaymentForm = () => {
                     />
                 </div>
 
-                <button type="submit" className="submit-button">
-                    Submit Payment
+                {paymentStatus && (
+                    <div className={`status-message ${paymentStatus.type}`}>
+                        {paymentStatus.message}
+                    </div>
+                )}
+
+                <button 
+                    type="submit" 
+                    className="submit-button"
+                    disabled={isProcessing}
+                >
+                    {isProcessing ? 'Processing...' : 'Submit Payment'}
                 </button>
             </form>
         </div>

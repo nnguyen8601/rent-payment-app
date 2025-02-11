@@ -26,9 +26,10 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: "upload"
           app_location: "/" # Location of your app code
-          api_location: "" # Leave empty if not using API
+          api_location: "api" # API directory - this integrates with Static Web Apps
           output_location: "build" # Built app content directory
           app_build_command: "npm run build"
+          api_build_command: "cd api && npm install" # Install API dependencies
 
   close_pull_request_job:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
