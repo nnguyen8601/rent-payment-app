@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "API for rent payment processing",
   "dependencies": {
-    "stripe": "^12.0.0"
+    "stripe": "^12.0.0",
+    "mssql": "^9.1.1"
   }
 } 
