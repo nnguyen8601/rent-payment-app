@@ -16,27 +16,10 @@ module.exports = async function (context, req) {
     try {
         // Validate request
         if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
-            !req.body.renterName || !req.body.rentLocation || !req.body.userId) {
+            !req.body.renterName || !req.body.rentLocation) {
             context.res = {
                 status: 400,
-                body: { error: "Missing required payment information" }
-            };
-            return;
-        }
-
-        // Connect to database
-        await sql.connect(config);
-
-        // Verify user exists
-        const userResult = await sql.query`
-            SELECT UserId FROM Users 
-            WHERE UserId = ${req.body.userId}
-        `;
-
-        if (userResult.recordset.length === 0) {
-            context.res = {
-                status: 401,
-                body: { error: "Invalid user" }
+                body: "Missing required payment information"
             };
             return;
         }
@@ -51,11 +34,14 @@ module.exports = async function (context, req) {
             description: `Rent payment for ${req.body.renterName} - ${req.body.rentLocation}`,
         });
 
-        // If payment successful, store transaction
+        // If payment successful, store transaction in database
         if (paymentIntent.status === 'succeeded') {
+            // Connect to database
+            await sql.connect(config);
+
+            // Create transaction record
             const transaction = {
                 transactionId: paymentIntent.id,
-                userId: req.body.userId,
                 renterName: req.body.renterName,
                 rentLocation: req.body.rentLocation,
                 amount: parseFloat(req.body.amount),
@@ -65,10 +51,10 @@ module.exports = async function (context, req) {
                 zipCode: req.body.zipCode
             };
 
-            await sql.query`
+            // Insert into database
+            const result = await sql.query`
                 INSERT INTO RentPayments (
                     TransactionId,
-                    UserId,
                     RenterName,
                     RentLocation,
                     Amount,
@@ -79,7 +65,6 @@ module.exports = async function (context, req) {
                 )
                 VALUES (
                     ${transaction.transactionId},
-                    ${transaction.userId},
                     ${transaction.renterName},
                     ${transaction.rentLocation},
                     ${transaction.amount},
@@ -100,7 +85,6 @@ module.exports = async function (context, req) {
             };
         }
     } catch (error) {
-        context.log.error('Payment error:', error);
         context.res = {
             status: 500,
             body: {
@@ -109,7 +93,6 @@ module.exports = async function (context, req) {
             }
         };
     } finally {
-        // Close SQL connection
         if (sql.connected) {
             await sql.close();
         }

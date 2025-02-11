@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import '../styles/PaymentForm.css';
 
-const PaymentForm = ({ user }) => {
+const PaymentForm = () => {
     // Add rental properties data
     const rentalProperties = [
         { id: 1, address: 'CILA 1' },
@@ -73,15 +73,14 @@ const PaymentForm = ({ user }) => {
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
                     paymentMethodId: paymentMethod.id,
                     amount: formData.amount,
                     renterName: formData.renterName,
                     rentLocation: formData.rentLocation,
-                    zipCode: formData.zipCode,
-                    userId: user.id
+                    zipCode: formData.zipCode
                 })
             });
 
