@@ -102,6 +102,23 @@ const PaymentForm = () => {
         }
     };
 
+    const cardElementOptions = {
+        style: {
+            base: {
+                fontSize: '16px',
+                color: '#424770',
+                '::placeholder': {
+                    color: '#aab7c4',
+                },
+                padding: '10px 12px',
+            },
+            invalid: {
+                color: '#9e2146',
+            },
+        },
+        hidePostalCode: true, // We have a separate ZIP code field
+    };
+
     return (
         <div className="payment-form-container">
             <form onSubmit={handleSubmit} className="payment-form">
@@ -152,23 +169,12 @@ const PaymentForm = () => {
 
                 <div className="form-group">
                     <label>Card Details</label>
-                    <CardElement 
-                        className="card-element"
-                        options={{
-                            style: {
-                                base: {
-                                    fontSize: '16px',
-                                    color: '#424770',
-                                    '::placeholder': {
-                                        color: '#aab7c4',
-                                    },
-                                },
-                                invalid: {
-                                    color: '#9e2146',
-                                },
-                            },
-                        }}
-                    />
+                    <div className="card-element-container">
+                        <CardElement 
+                            options={cardElementOptions}
+                            className="card-element"
+                        />
+                    </div>
                 </div>
 
                 <div className="form-group">
