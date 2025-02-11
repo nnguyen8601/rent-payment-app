@@ -13,12 +13,22 @@ const config = {
 module.exports = async function (context, req) {
     context.log('Login function processing request');
     
+    // Set response headers
+    context.res = {
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    };
+    
     try {
         if (!req.body || !req.body.email || !req.body.password) {
             context.log('Missing email or password');
             context.res = {
                 status: 400,
-                body: { error: "Email and password are required" }
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ error: "Email and password are required" })
             };
             return;
         }
@@ -39,25 +49,43 @@ module.exports = async function (context, req) {
         if (result.recordset.length > 0) {
             context.res = {
                 status: 200,
-                body: {
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
                     user: {
                         id: result.recordset[0].UserId,
                         email: result.recordset[0].Email,
                         name: result.recordset[0].Name
                     }
-                }
+                })
             };
         } else {
             context.res = {
                 status: 401,
-                body: { error: "Invalid email or password" }
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ error: "Invalid email or password" })
             };
         }
     } catch (error) {
         context.log.error('Error in login function:', error);
+        context.log.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            code: error.code,
+            state: error.state
+        });
         context.res = {
             status: 500,
-            body: { error: "An error occurred during login" }
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+                error: "An error occurred during login",
+                details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            })
         };
     } finally {
         if (sql.connected) {

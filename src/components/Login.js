@@ -22,17 +22,33 @@ const Login = ({ onLogin }) => {
         setError(null);
 
         try {
-            console.log('Submitting login request...');
+            console.log('Submitting login request...', formData);
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(formData)
             });
 
             console.log('Response status:', response.status);
-            const data = await response.json();
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Server response was not JSON');
+            }
+
+            const text = await response.text();
+            console.log('Response text:', text);
+
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                throw new Error('Invalid JSON response from server');
+            }
+
             console.log('Response data:', data);
 
             if (response.ok) {
@@ -42,7 +58,7 @@ const Login = ({ onLogin }) => {
             }
         } catch (error) {
             console.error('Login error:', error);
-            setError('An error occurred during login');
+            setError(error.message || 'An error occurred during login');
         }
     };
 
