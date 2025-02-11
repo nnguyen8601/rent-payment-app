@@ -112,26 +112,18 @@ const PaymentForm = () => {
         style: {
             base: {
                 fontSize: '16px',
-                color: '#424770',
-                fontFamily: 'Arial, sans-serif',
+                color: '#32325d',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                fontSmoothing: 'antialiased',
                 '::placeholder': {
-                    color: '#aab7c4',
-                },
-                padding: '10px 12px',
+                    color: '#aab7c4'
+                }
             },
             invalid: {
-                color: '#9e2146',
-            },
-        },
-        hidePostalCode: true,
-        classes: {
-            base: 'stripe-element',
-            complete: 'stripe-element--complete',
-            empty: 'stripe-element--empty',
-            focus: 'stripe-element--focus',
-            invalid: 'stripe-element--invalid',
-            webkitAutofill: 'stripe-element--webkit-autofill'
-        },
+                color: '#fa755a',
+                iconColor: '#fa755a'
+            }
+        }
     };
 
     return (
@@ -187,9 +179,8 @@ const PaymentForm = () => {
                     <div className="card-element-container">
                         <CardElement 
                             options={cardElementOptions}
-                            className="card-element"
-                            onChange={(e) => {
-                                console.log('Card Element change:', e);
+                            onChange={e => {
+                                console.log('CardElement change:', e.complete, e.error);
                             }}
                         />
                     </div>
