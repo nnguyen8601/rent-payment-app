@@ -14,38 +14,29 @@ const config = {
 
 module.exports = async function (context, req) {
     try {
-        // Check authentication
-        const authHeader = req.headers.authorization;
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        // Validate request
+        if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
+            !req.body.renterName || !req.body.rentLocation || !req.body.userId) {
             context.res = {
-                status: 401,
-                body: { error: "Authentication required" }
+                status: 400,
+                body: { error: "Missing required payment information" }
             };
             return;
         }
 
-        const userId = authHeader.split(' ')[1];
+        // Connect to database
+        await sql.connect(config);
 
         // Verify user exists
-        await sql.connect(config);
         const userResult = await sql.query`
-            SELECT UserId FROM Users WHERE UserId = ${userId}
+            SELECT UserId FROM Users 
+            WHERE UserId = ${req.body.userId}
         `;
 
         if (userResult.recordset.length === 0) {
             context.res = {
                 status: 401,
-                body: { error: "Invalid authentication" }
-            };
-            return;
-        }
-
-        // Validate request
-        if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
-            !req.body.renterName || !req.body.rentLocation) {
-            context.res = {
-                status: 400,
-                body: "Missing required payment information"
+                body: { error: "Invalid user" }
             };
             return;
         }
@@ -60,11 +51,11 @@ module.exports = async function (context, req) {
             description: `Rent payment for ${req.body.renterName} - ${req.body.rentLocation}`,
         });
 
-        // If payment successful, store transaction in database
+        // If payment successful, store transaction
         if (paymentIntent.status === 'succeeded') {
-            // Create transaction record
             const transaction = {
                 transactionId: paymentIntent.id,
+                userId: req.body.userId,
                 renterName: req.body.renterName,
                 rentLocation: req.body.rentLocation,
                 amount: parseFloat(req.body.amount),
@@ -74,10 +65,10 @@ module.exports = async function (context, req) {
                 zipCode: req.body.zipCode
             };
 
-            // Insert into database
-            const result = await sql.query`
+            await sql.query`
                 INSERT INTO RentPayments (
                     TransactionId,
+                    UserId,
                     RenterName,
                     RentLocation,
                     Amount,
@@ -88,6 +79,7 @@ module.exports = async function (context, req) {
                 )
                 VALUES (
                     ${transaction.transactionId},
+                    ${transaction.userId},
                     ${transaction.renterName},
                     ${transaction.rentLocation},
                     ${transaction.amount},
@@ -108,6 +100,7 @@ module.exports = async function (context, req) {
             };
         }
     } catch (error) {
+        context.log.error('Payment error:', error);
         context.res = {
             status: 500,
             body: {

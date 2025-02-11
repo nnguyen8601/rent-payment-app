@@ -73,8 +73,7 @@ const PaymentForm = ({ user }) => {
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.id}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     paymentMethodId: paymentMethod.id,

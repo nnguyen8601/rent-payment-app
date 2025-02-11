@@ -8,31 +8,13 @@
     {
       "route": "/api/process-payment",
       "methods": ["POST"],
-      "allowedRoles": ["authenticated"]
-    },
-    {
-      "route": "/",
       "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/payment",
-      "allowedRoles": ["authenticated"]
+      "route": "/*",
+      "allowedRoles": ["anonymous"]
     }
   ],
-  "auth": {
-    "identityProviders": {
-      "customOpenIdConnectProviders": {
-        "custom": {
-          "registration": {
-            "clientIdSettingName": "CUSTOM_AUTH_CLIENT_ID",
-            "clientCredential": {
-              "clientSecretSettingName": "CUSTOM_AUTH_CLIENT_SECRET"
-            }
-          }
-        }
-      }
-    }
-  },
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
