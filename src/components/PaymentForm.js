@@ -1,5 +1,5 @@
 // filepath: rent-payment-app/rent-payment-app/src/components/PaymentForm.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import '../styles/PaymentForm.css';
 
@@ -15,6 +15,12 @@ const PaymentForm = () => {
 
     const stripe = useStripe();
     const elements = useElements();
+
+    // Add this for debugging
+    useEffect(() => {
+        console.log('Stripe available:', !!stripe);
+        console.log('Elements available:', !!elements);
+    }, [stripe, elements]);
 
     const [formData, setFormData] = useState({
         renterName: '',
@@ -107,6 +113,7 @@ const PaymentForm = () => {
             base: {
                 fontSize: '16px',
                 color: '#424770',
+                fontFamily: 'Arial, sans-serif',
                 '::placeholder': {
                     color: '#aab7c4',
                 },
@@ -116,7 +123,15 @@ const PaymentForm = () => {
                 color: '#9e2146',
             },
         },
-        hidePostalCode: true, // We have a separate ZIP code field
+        hidePostalCode: true,
+        classes: {
+            base: 'stripe-element',
+            complete: 'stripe-element--complete',
+            empty: 'stripe-element--empty',
+            focus: 'stripe-element--focus',
+            invalid: 'stripe-element--invalid',
+            webkitAutofill: 'stripe-element--webkit-autofill'
+        },
     };
 
     return (
@@ -173,6 +188,9 @@ const PaymentForm = () => {
                         <CardElement 
                             options={cardElementOptions}
                             className="card-element"
+                            onChange={(e) => {
+                                console.log('Card Element change:', e);
+                            }}
                         />
                     </div>
                 </div>
