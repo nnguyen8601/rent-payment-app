@@ -1,5 +1,6 @@
 // filepath: rent-payment-app/rent-payment-app/src/components/PaymentForm.js
 import React, { useState } from 'react';
+import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import '../styles/PaymentForm.css';
 
 const PaymentForm = () => {
@@ -12,14 +13,14 @@ const PaymentForm = () => {
         // Add more properties as needed
     ];
 
+    const stripe = useStripe();
+    const elements = useElements();
+
     const [formData, setFormData] = useState({
         renterName: '',
-        rentLocation: '', // This will store the selected property address
-        cardNumber: '',
-        expirationDate: '',
-        cvc: '',
-        zipCode: '',
+        rentLocation: '',
         amount: '',
+        zipCode: '',
     });
 
     const [isProcessing, setIsProcessing] = useState(false);
@@ -35,16 +36,42 @@ const PaymentForm = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        if (!stripe || !elements) {
+            return;
+        }
+
         setIsProcessing(true);
         setPaymentStatus(null);
 
         try {
+            const { error, paymentMethod } = await stripe.createPaymentMethod({
+                type: 'card',
+                card: elements.getElement(CardElement),
+                billing_details: {
+                    name: formData.renterName,
+                    address: {
+                        postal_code: formData.zipCode
+                    }
+                }
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    paymentMethodId: paymentMethod.id,
+                    amount: formData.amount,
+                    renterName: formData.renterName,
+                    rentLocation: formData.rentLocation,
+                    zipCode: formData.zipCode
+                })
             });
 
             const result = await response.json();
@@ -58,12 +85,10 @@ const PaymentForm = () => {
                 setFormData({
                     renterName: '',
                     rentLocation: '',
-                    cardNumber: '',
-                    expirationDate: '',
-                    cvc: '',
-                    zipCode: '',
                     amount: '',
+                    zipCode: '',
                 });
+                elements.getElement(CardElement).clear();
             } else {
                 throw new Error(result.error);
             }
@@ -126,46 +151,24 @@ const PaymentForm = () => {
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="cardNumber">Card Number</label>
-                    <input
-                        type="text"
-                        id="cardNumber"
-                        name="cardNumber"
-                        value={formData.cardNumber}
-                        onChange={handleChange}
-                        maxLength="16"
-                        placeholder="1234 5678 9012 3456"
-                        required
+                    <label>Card Details</label>
+                    <CardElement 
+                        className="card-element"
+                        options={{
+                            style: {
+                                base: {
+                                    fontSize: '16px',
+                                    color: '#424770',
+                                    '::placeholder': {
+                                        color: '#aab7c4',
+                                    },
+                                },
+                                invalid: {
+                                    color: '#9e2146',
+                                },
+                            },
+                        }}
                     />
-                </div>
-
-                <div className="form-row">
-                    <div className="form-group half-width">
-                        <label htmlFor="expirationDate">Expiration Date</label>
-                        <input
-                            type="text"
-                            id="expirationDate"
-                            name="expirationDate"
-                            value={formData.expirationDate}
-                            onChange={handleChange}
-                            placeholder="MM/YY"
-                            maxLength="5"
-                            required
-                        />
-                    </div>
-
-                    <div className="form-group half-width">
-                        <label htmlFor="cvc">CVC</label>
-                        <input
-                            type="text"
-                            id="cvc"
-                            name="cvc"
-                            value={formData.cvc}
-                            onChange={handleChange}
-                            maxLength="3"
-                            required
-                        />
-                    </div>
                 </div>
 
                 <div className="form-group">
@@ -190,7 +193,7 @@ const PaymentForm = () => {
                 <button 
                     type="submit" 
                     className="submit-button"
-                    disabled={isProcessing}
+                    disabled={isProcessing || !stripe}
                 >
                     {isProcessing ? 'Processing...' : 'Submit Payment'}
                 </button>

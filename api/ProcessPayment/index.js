@@ -3,8 +3,8 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 module.exports = async function (context, req) {
     try {
         // Validate request
-        if (!req.body || !req.body.cardNumber || !req.body.expirationDate || 
-            !req.body.cvc || !req.body.amount || !req.body.renterName) {
+        if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
+            !req.body.renterName || !req.body.rentLocation) {
             context.res = {
                 status: 400,
                 body: "Missing required payment information"
@@ -12,22 +12,11 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Create a payment method using card details
-        const paymentMethod = await stripe.paymentMethods.create({
-            type: 'card',
-            card: {
-                number: req.body.cardNumber,
-                exp_month: parseInt(req.body.expirationDate.split('/')[0]),
-                exp_year: parseInt('20' + req.body.expirationDate.split('/')[1]),
-                cvc: req.body.cvc,
-            },
-        });
-
-        // Create a payment intent
+        // Create a payment intent with the payment method
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(parseFloat(req.body.amount) * 100), // Convert to cents
             currency: 'usd',
-            payment_method: paymentMethod.id,
+            payment_method: req.body.paymentMethodId,
             confirmation_method: 'manual',
             confirm: true,
             description: `Rent payment for ${req.body.renterName} - ${req.body.rentLocation}`,

@@ -95,4 +95,21 @@ input:focus,
 .submit-button:disabled {
     background-color: #cccccc;
     cursor: not-allowed;
+}
+
+.card-element {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: white;
+}
+
+.card-element.StripeElement--focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.card-element.StripeElement--invalid {
+    border-color: #dc3545;
 } 
