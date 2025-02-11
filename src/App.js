@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import PaymentForm from './components/PaymentForm';
+import Login from './components/Login';
 import './styles/App.css';
 
 // Add more detailed logging
@@ -17,12 +18,22 @@ console.log('Stripe initialized:', !!stripePromise);
 console.log('Stripe Key Present:', !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 const App = () => {
+    const [user, setUser] = useState(null);
+
+    const handleLogin = (userData) => {
+        setUser(userData);
+    };
+
     return (
         <div className="App">
             <h1>Rent Payment</h1>
-            <Elements stripe={stripePromise}>
-                <PaymentForm />
-            </Elements>
+            {!user ? (
+                <Login onLogin={handleLogin} />
+            ) : (
+                <Elements stripe={stripePromise}>
+                    <PaymentForm user={user} />
+                </Elements>
+            )}
         </div>
     );
 };
