@@ -1,5 +1,7 @@
 # Rent Payment Web App
 
+[![Azure Static Web Apps CI/CD](https://github.com/YOUR_USERNAME/rent-payment-app/actions/workflows/azure-static-web-apps.yml/badge.svg)](https://github.com/YOUR_USERNAME/rent-payment-app/actions/workflows/azure-static-web-apps.yml)
+
 This is a simple React web application that allows residents to pay their rent online. The application includes a form for entering payment details and a header for easy navigation.
 
 ## Project Structure
