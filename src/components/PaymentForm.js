@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import '../styles/PaymentForm.css';
 
-const PaymentForm = () => {
+const PaymentForm = ({ user }) => {
     // Add rental properties data
     const rentalProperties = [
         { id: 1, address: 'CILA 1' },
@@ -74,13 +74,15 @@ const PaymentForm = () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${user.id}`
                 },
                 body: JSON.stringify({
                     paymentMethodId: paymentMethod.id,
                     amount: formData.amount,
                     renterName: formData.renterName,
                     rentLocation: formData.rentLocation,
-                    zipCode: formData.zipCode
+                    zipCode: formData.zipCode,
+                    userId: user.id
                 })
             });
 

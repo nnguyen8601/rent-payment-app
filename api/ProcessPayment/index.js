@@ -14,6 +14,32 @@ const config = {
 
 module.exports = async function (context, req) {
     try {
+        // Check authentication
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            context.res = {
+                status: 401,
+                body: { error: "Authentication required" }
+            };
+            return;
+        }
+
+        const userId = authHeader.split(' ')[1];
+
+        // Verify user exists
+        await sql.connect(config);
+        const userResult = await sql.query`
+            SELECT UserId FROM Users WHERE UserId = ${userId}
+        `;
+
+        if (userResult.recordset.length === 0) {
+            context.res = {
+                status: 401,
+                body: { error: "Invalid authentication" }
+            };
+            return;
+        }
+
         // Validate request
         if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
             !req.body.renterName || !req.body.rentLocation) {
@@ -36,9 +62,6 @@ module.exports = async function (context, req) {
 
         // If payment successful, store transaction in database
         if (paymentIntent.status === 'succeeded') {
-            // Connect to database
-            await sql.connect(config);
-
             // Create transaction record
             const transaction = {
                 transactionId: paymentIntent.id,
