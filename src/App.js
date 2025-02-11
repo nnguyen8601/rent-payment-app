@@ -4,8 +4,8 @@ import { loadStripe } from '@stripe/stripe-js';
 import PaymentForm from './components/PaymentForm';
 import './styles/App.css';
 
-// Replace with your Stripe publishable key
-const stripePromise = loadStripe('your_publishable_key_here');
+// Get publishable key from environment variables
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 const App = () => {
     return (
