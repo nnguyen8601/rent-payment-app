@@ -22,6 +22,7 @@ const Login = ({ onLogin }) => {
         setError(null);
 
         try {
+            console.log('Submitting login request...');
             const response = await fetch('/api/login', {
                 method: 'POST',
                 headers: {
@@ -30,7 +31,9 @@ const Login = ({ onLogin }) => {
                 body: JSON.stringify(formData)
             });
 
+            console.log('Response status:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
 
             if (response.ok) {
                 onLogin(data.user);
@@ -38,6 +41,7 @@ const Login = ({ onLogin }) => {
                 setError(data.error || 'Login failed');
             }
         } catch (error) {
+            console.error('Login error:', error);
             setError('An error occurred during login');
         }
     };

@@ -11,8 +11,11 @@ const config = {
 };
 
 module.exports = async function (context, req) {
+    context.log('Login function processing request');
+    
     try {
         if (!req.body || !req.body.email || !req.body.password) {
+            context.log('Missing email or password');
             context.res = {
                 status: 400,
                 body: { error: "Email and password are required" }
@@ -20,7 +23,9 @@ module.exports = async function (context, req) {
             return;
         }
 
+        context.log('Connecting to database...');
         await sql.connect(config);
+        context.log('Connected to database');
 
         const result = await sql.query`
             SELECT UserId, Email, Name
@@ -28,6 +33,8 @@ module.exports = async function (context, req) {
             WHERE Email = ${req.body.email}
             AND Password = ${req.body.password}
         `;
+
+        context.log(`Query returned ${result.recordset.length} records`);
 
         if (result.recordset.length > 0) {
             context.res = {
@@ -47,6 +54,7 @@ module.exports = async function (context, req) {
             };
         }
     } catch (error) {
+        context.log.error('Error in login function:', error);
         context.res = {
             status: 500,
             body: { error: "An error occurred during login" }

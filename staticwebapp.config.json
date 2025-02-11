@@ -1,4 +1,16 @@
 {
+  "routes": [
+    {
+      "route": "/api/login",
+      "methods": ["POST"],
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/process-payment",
+      "methods": ["POST"],
+      "allowedRoles": ["authenticated"]
+    }
+  ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
