@@ -86,8 +86,7 @@ const PaymentForm = () => {
                     return_url: `${window.location.origin}/payment-complete`,
                     payment_method_data: {
                         billing_details: {
-                            name: formData.renterName,
-                            postal_code: formData.zipCode
+                            name: formData.renterName
                         }
                     }
                 },
