@@ -89,8 +89,7 @@ const PaymentForm = () => {
                             name: formData.renterName
                         }
                     }
-                },
-                redirect: 'if_required'
+                }
             });
 
             if (error) {

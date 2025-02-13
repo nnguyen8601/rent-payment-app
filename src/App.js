@@ -1,7 +1,9 @@
 import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import PaymentForm from './components/PaymentForm';
+import PaymentComplete from './components/PaymentComplete';
 import './styles/App.css';
 
 // Add more detailed logging
@@ -32,13 +34,29 @@ const options = {
 
 const App = () => {
     return (
-        <div className="App">
-            <h1>Rent Payment</h1>
-            {/* Wrap PaymentForm with Stripe Elements provider */}
-            <Elements stripe={stripePromise} options={options}>
-                <PaymentForm />
-            </Elements>
-        </div>
+        <Router>
+            <div className="App">
+                <h1>Rent Payment</h1>
+                <Routes>
+                    <Route 
+                        path="/" 
+                        element={
+                            <Elements stripe={stripePromise} options={options}>
+                                <PaymentForm />
+                            </Elements>
+                        } 
+                    />
+                    <Route 
+                        path="/payment-complete" 
+                        element={
+                            <Elements stripe={stripePromise}>
+                                <PaymentComplete />
+                            </Elements>
+                        } 
+                    />
+                </Routes>
+            </div>
+        </Router>
     );
 };
 
