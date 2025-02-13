@@ -103,7 +103,8 @@ rent-payment-app/
        Status NVARCHAR(50) NOT NULL,
        StripePaymentId NVARCHAR(100) NOT NULL,
        ZipCode NVARCHAR(10) NOT NULL,
-       CreatedAt DATETIME DEFAULT GETDATE()
+       CreatedAt DATETIME DEFAULT GETDATE(),
+       UpdatedAt DATETIME DEFAULT GETDATE()
    );
    ```
 
@@ -138,42 +139,3 @@ To deploy:
 - Responsive design
 - Error handling and validation
 - Payment confirmation page
-
-## Development Guidelines
-
-1. **Branch Strategy**
-   - Main branch: Production-ready code
-   - Feature branches: New features/fixes
-
-2. **Code Style**
-   - Use ESLint configuration
-   - Follow React best practices
-   - Include proper error handling
-
-3. **Testing**
-   - Test with Stripe test keys
-   - Verify database connections
-   - Check payment flows
-
-## Troubleshooting
-
-Common issues and solutions:
-1. **Payment Processing Errors**
-   - Verify Stripe keys
-   - Check API endpoint availability
-   - Review transaction logs
-
-2. **Database Connection Issues**
-   - Confirm firewall rules
-   - Verify connection strings
-   - Check SQL credentials
-
-## Support
-
-For support, please contact:
-- Technical issues: [Your Contact]
-- Payment issues: [Support Contact]
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
