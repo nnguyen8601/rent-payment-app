@@ -31,8 +31,7 @@ module.exports = async function (context, req) {
         // Update payment status with explicit status value
         const result = await sql.query`
             UPDATE RentPayments
-            SET Status = ${status},
-                UpdatedAt = GETDATE()
+            SET Status = ${status}
             OUTPUT 
                 INSERTED.Status as NewStatus,
                 DELETED.Status as OldStatus
