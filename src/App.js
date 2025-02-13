@@ -9,7 +9,7 @@ console.log('Environment:', process.env.NODE_ENV);
 console.log('Stripe Key Length:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.length);
 console.log('Stripe Key Prefix:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.substring(0, 7));
 
-// Make sure this is your actual publishable key
+// Initialize Stripe with publishable key
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 // Add this for debugging
@@ -34,6 +34,7 @@ const App = () => {
     return (
         <div className="App">
             <h1>Rent Payment</h1>
+            {/* Wrap PaymentForm with Stripe Elements provider */}
             <Elements stripe={stripePromise} options={options}>
                 <PaymentForm />
             </Elements>

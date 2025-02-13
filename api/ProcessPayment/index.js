@@ -18,6 +18,7 @@ const config = {
 // 3. Stores transaction in Azure SQL Database
 // 4. Returns payment status to frontend
 module.exports = async function (context, req) {
+    let connection;
     try {
         // Validate request
         if (!req.body || !req.body.amount || 
@@ -29,9 +30,9 @@ module.exports = async function (context, req) {
             return;
         }
 
-        // Create a PaymentIntent with the order amount and currency
+        // Create a PaymentIntent
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(parseFloat(req.body.amount) * 100), // convert to cents
+            amount: Math.round(parseFloat(req.body.amount) * 100),
             currency: 'usd',
             automatic_payment_methods: {
                 enabled: true,
@@ -43,16 +44,10 @@ module.exports = async function (context, req) {
             }
         });
 
-        // Return the client secret
-        context.res = {
-            status: 200,
-            body: {
-                clientSecret: paymentIntent.client_secret
-            }
-        };
+        // Connect to database
+        connection = await sql.connect(config);
 
-        // Store transaction intent in database
-        await sql.connect(config);
+        // Store initial transaction record
         await sql.query`
             INSERT INTO RentPayments (
                 TransactionId,
@@ -70,11 +65,20 @@ module.exports = async function (context, req) {
                 ${req.body.rentLocation},
                 ${parseFloat(req.body.amount)},
                 ${new Date()},
-                'pending',
+                ${paymentIntent.status},
                 ${paymentIntent.id},
                 ${req.body.zipCode || ''}
             )
         `;
+
+        // Return the client secret
+        context.res = {
+            status: 200,
+            body: {
+                clientSecret: paymentIntent.client_secret,
+                paymentIntentId: paymentIntent.id
+            }
+        };
 
     } catch (error) {
         context.log.error('Payment error:', error);
@@ -85,7 +89,7 @@ module.exports = async function (context, req) {
             }
         };
     } finally {
-        if (sql.connected) {
+        if (connection) {
             await sql.close();
         }
     }

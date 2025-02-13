@@ -98,6 +98,18 @@ const PaymentForm = () => {
             }
 
             if (paymentIntent.status === 'succeeded') {
+                // Update payment status in database
+                await fetch('/api/update-payment-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        paymentIntentId: paymentIntent.id,
+                        status: paymentIntent.status
+                    })
+                });
+
                 setPaymentStatus({
                     type: 'success',
                     message: 'Payment processed successfully!'
