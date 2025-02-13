@@ -1,10 +1,10 @@
 // filepath: rent-payment-app/rent-payment-app/src/components/PaymentForm.js
-import React, { useState, useEffect } from 'react';
-import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import React, { useState } from 'react';
+import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import '../styles/PaymentForm.css';
 
 const PaymentForm = () => {
-    // Add rental properties data
+    // Rental properties data
     const rentalProperties = [
         { id: 1, address: 'CILA 1' },
         { id: 2, address: 'CILA 2' },
@@ -17,25 +17,21 @@ const PaymentForm = () => {
         // Add more properties as needed
     ];
 
+    // Get Stripe hooks
     const stripe = useStripe();
     const elements = useElements();
 
-    // Add this for debugging
-    useEffect(() => {
-        console.log('Stripe available:', !!stripe);
-        console.log('Elements available:', !!elements);
-    }, [stripe, elements]);
-
+    // Form state
     const [formData, setFormData] = useState({
         renterName: '',
         rentLocation: '',
         amount: '',
         zipCode: '',
     });
-
     const [isProcessing, setIsProcessing] = useState(false);
     const [paymentStatus, setPaymentStatus] = useState(null);
 
+    // Handle form input changes
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prevState => ({
@@ -44,10 +40,12 @@ const PaymentForm = () => {
         }));
     };
 
+    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
-        
+
         if (!stripe || !elements) {
+            // Stripe.js hasn't loaded yet
             return;
         }
 
@@ -55,28 +53,13 @@ const PaymentForm = () => {
         setPaymentStatus(null);
 
         try {
-            const { error, paymentMethod } = await stripe.createPaymentMethod({
-                type: 'card',
-                card: elements.getElement(CardElement),
-                billing_details: {
-                    name: formData.renterName,
-                    address: {
-                        postal_code: formData.zipCode
-                    }
-                }
-            });
-
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            const response = await fetch('/api/process-payment', {
+            // Create payment intent on your backend
+            const createPaymentIntent = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    paymentMethodId: paymentMethod.id,
                     amount: formData.amount,
                     renterName: formData.renterName,
                     rentLocation: formData.rentLocation,
@@ -84,9 +67,28 @@ const PaymentForm = () => {
                 })
             });
 
-            const result = await response.json();
+            const { clientSecret } = await createPaymentIntent.json();
 
-            if (result.success) {
+            // Confirm the payment with Stripe
+            const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: `${window.location.origin}/payment-complete`,
+                    payment_method_data: {
+                        billing_details: {
+                            name: formData.renterName,
+                            postal_code: formData.zipCode
+                        }
+                    }
+                },
+                redirect: 'if_required'
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            if (paymentIntent.status === 'succeeded') {
                 setPaymentStatus({
                     type: 'success',
                     message: 'Payment processed successfully!'
@@ -98,9 +100,6 @@ const PaymentForm = () => {
                     amount: '',
                     zipCode: '',
                 });
-                elements.getElement(CardElement).clear();
-            } else {
-                throw new Error(result.error);
             }
         } catch (error) {
             setPaymentStatus({
@@ -112,27 +111,10 @@ const PaymentForm = () => {
         }
     };
 
-    const cardElementOptions = {
-        style: {
-            base: {
-                fontSize: '16px',
-                color: '#32325d',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                fontSmoothing: 'antialiased',
-                '::placeholder': {
-                    color: '#aab7c4'
-                }
-            },
-            invalid: {
-                color: '#fa755a',
-                iconColor: '#fa755a'
-            }
-        }
-    };
-
     return (
         <div className="payment-form-container">
             <form onSubmit={handleSubmit} className="payment-form">
+                {/* Renter details */}
                 <div className="form-group">
                     <label htmlFor="renterName">Renter's Name</label>
                     <input
@@ -145,8 +127,9 @@ const PaymentForm = () => {
                     />
                 </div>
 
+                {/* Property selection */}
                 <div className="form-group">
-                    <label htmlFor="rentLocation">Rental Property Address</label>
+                    <label htmlFor="rentLocation">Rental Property</label>
                     <select
                         id="rentLocation"
                         name="rentLocation"
@@ -164,6 +147,7 @@ const PaymentForm = () => {
                     </select>
                 </div>
 
+                {/* Amount */}
                 <div className="form-group">
                     <label htmlFor="amount">Payment Amount ($)</label>
                     <input
@@ -178,37 +162,20 @@ const PaymentForm = () => {
                     />
                 </div>
 
+                {/* Stripe Payment Element */}
                 <div className="form-group">
-                    <label>Card Details</label>
-                    <div className="card-element-container">
-                        <CardElement 
-                            options={cardElementOptions}
-                            onChange={e => {
-                                console.log('CardElement change:', e.complete, e.error);
-                            }}
-                        />
-                    </div>
+                    <label>Payment Details</label>
+                    <PaymentElement />
                 </div>
 
-                <div className="form-group">
-                    <label htmlFor="zipCode">Billing Zip Code</label>
-                    <input
-                        type="text"
-                        id="zipCode"
-                        name="zipCode"
-                        value={formData.zipCode}
-                        onChange={handleChange}
-                        maxLength="5"
-                        required
-                    />
-                </div>
-
+                {/* Status message */}
                 {paymentStatus && (
                     <div className={`status-message ${paymentStatus.type}`}>
                         {paymentStatus.message}
                     </div>
                 )}
 
+                {/* Submit button */}
                 <button 
                     type="submit" 
                     className="submit-button"

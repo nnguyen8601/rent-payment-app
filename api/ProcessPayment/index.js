@@ -12,6 +12,11 @@ const config = {
     }
 };
 
+// Payment processing function that:
+// 1. Validates payment request
+// 2. Creates Stripe payment intent
+// 3. Stores transaction in Azure SQL Database
+// 4. Returns payment status to frontend
 module.exports = async function (context, req) {
     try {
         // Validate request

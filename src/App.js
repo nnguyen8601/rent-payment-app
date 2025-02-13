@@ -16,11 +16,25 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 console.log('Stripe initialized:', !!stripePromise);
 console.log('Stripe Key Present:', !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
+// Configure Stripe Elements
+const options = {
+    mode: 'payment',
+    amount: 1099,
+    currency: 'usd',
+    // Customize the appearance
+    appearance: {
+        theme: 'stripe',
+        variables: {
+            colorPrimary: '#007bff',
+        },
+    },
+};
+
 const App = () => {
     return (
         <div className="App">
             <h1>Rent Payment</h1>
-            <Elements stripe={stripePromise}>
+            <Elements stripe={stripePromise} options={options}>
                 <PaymentForm />
             </Elements>
         </div>
