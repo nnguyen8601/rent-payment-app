@@ -72,10 +72,16 @@ const PaymentForm = () => {
                 throw new Error(data.error);
             }
 
+            // Submit the form before confirming payment
+            const { error: submitError } = await elements.submit();
+            if (submitError) {
+                throw new Error(submitError.message);
+            }
+
             // Use the clientSecret to confirm payment
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
-                clientSecret: data.clientSecret, // Use the clientSecret from backend
+                clientSecret: data.clientSecret,
                 confirmParams: {
                     return_url: `${window.location.origin}/payment-complete`,
                     payment_method_data: {
