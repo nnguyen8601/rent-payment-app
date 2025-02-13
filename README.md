@@ -1,8 +1,14 @@
 # Rent Payment Web App
 
-[![Azure Static Web Apps CI/CD](https://github.com/YOUR_USERNAME/rent-payment-app/actions/workflows/azure-static-web-apps.yml/badge.svg)](https://github.com/YOUR_USERNAME/rent-payment-app/actions/workflows/azure-static-web-apps.yml)
+A React-based web application that enables secure rent payments using Stripe integration and Azure services. The application includes payment processing, transaction tracking, and a user-friendly interface.
 
-This is a simple React web application that allows residents to pay their rent online. The application includes a form for entering payment details and a header for easy navigation.
+## Tech Stack
+
+- **Frontend**: React.js with Stripe Elements
+- **Backend**: Azure Functions (Node.js)
+- **Database**: Azure SQL Database
+- **Payment Processing**: Stripe API
+- **Hosting**: Azure Static Web Apps
 
 ## Project Structure
 
@@ -12,54 +18,162 @@ rent-payment-app/
 │   ├── ProcessPayment/       # Payment processing function
 │   │   ├── function.json    # Function configuration
 │   │   └── index.js         # Payment logic
+│   ├── UpdatePaymentStatus/ # Status update function
+│   │   ├── function.json    
+│   │   └── index.js        
 │   ├── local.settings.json  # Local development settings
 │   └── package.json         # API dependencies
 ├── src/                     # React frontend
 │   ├── components/          # React components
-│   │   └── PaymentForm.js   # Payment form component
-│   ├── styles/             # CSS styles
-│   │   ├── App.css         # App styles
-│   │   └── PaymentForm.css # Form styles
+│   │   ├── PaymentForm.js   # Payment form component
+│   │   └── PaymentComplete.js # Payment confirmation component
+│   ├── styles/              # CSS styles
+│   │   ├── App.css         
+│   │   ├── PaymentForm.css 
+│   │   └── PaymentComplete.css
 │   ├── App.js              # Main React component
 │   └── index.js            # React entry point
 ├── public/                  # Static files
 ├── package.json            # Frontend dependencies
 └── staticwebapp.config.json # Azure Static Web App config
-
 ```
 
-## Getting Started
+## Prerequisites
 
-To get started with the project, follow these steps:
+1. Node.js (v14 or higher)
+2. Azure CLI
+3. Azure Functions Core Tools
+4. Azure SQL Database instance
+5. Stripe account with API keys
+6. Git
 
-1. **Clone the repository**:
-   ```
+## Setup Instructions
+
+1. **Clone the Repository**
+   ```bash
    git clone <repository-url>
    cd rent-payment-app
    ```
 
-2. **Install dependencies**:
-   ```
+2. **Install Dependencies**
+   ```bash
+   # Install frontend dependencies
    npm install
+
+   # Install backend dependencies
+   cd api
+   npm install
+   cd ..
    ```
 
-3. **Run the application**:
+3. **Environment Configuration**
+
+   Create a `.env` file in the root directory:
    ```
+   REACT_APP_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
+   ```
+
+   Create `local.settings.json` in the api directory:
+   ```json
+   {
+     "IsEncrypted": false,
+     "Values": {
+       "FUNCTIONS_WORKER_RUNTIME": "node",
+       "AzureWebJobsStorage": "",
+       "STRIPE_SECRET_KEY": "your_stripe_secret_key",
+       "SQL_SERVER": "your-server.database.windows.net",
+       "SQL_DATABASE": "your-database",
+       "SQL_USER": "your-username",
+       "SQL_PASSWORD": "your-password"
+     }
+   }
+   ```
+
+4. **Database Setup**
+
+   Run the following SQL script to create the required table:
+   ```sql
+   CREATE TABLE RentPayments (
+       Id INT IDENTITY(1,1) PRIMARY KEY,
+       TransactionId NVARCHAR(100) NOT NULL,
+       RenterName NVARCHAR(255) NOT NULL,
+       RentLocation NVARCHAR(500) NOT NULL,
+       Amount DECIMAL(10,2) NOT NULL,
+       PaymentDate DATETIME NOT NULL,
+       Status NVARCHAR(50) NOT NULL,
+       StripePaymentId NVARCHAR(100) NOT NULL,
+       ZipCode NVARCHAR(10) NOT NULL,
+       CreatedAt DATETIME DEFAULT GETDATE()
+   );
+   ```
+
+5. **Running Locally**
+   ```bash
+   # Start the frontend
    npm start
+
+   # In a separate terminal, start the API
+   cd api
+   func start
    ```
 
-4. **Open your browser** and navigate to `http://localhost:3000` to view the application.
+   The application will be available at `http://localhost:3000`
+
+## Deployment
+
+The application is configured for deployment to Azure Static Web Apps using GitHub Actions. The workflow file is included in `.github/workflows/`.
+
+To deploy:
+1. Create an Azure Static Web App resource
+2. Configure the following secrets in your GitHub repository:
+   - AZURE_STATIC_WEB_APPS_API_TOKEN
+   - REACT_APP_STRIPE_PUBLISHABLE_KEY
+   - Other environment variables as needed
 
 ## Features
 
-- User-friendly interface for residents to enter their payment details.
-- Responsive design that works on various devices.
-- Simple and clean layout.
+- Secure payment processing with Stripe
+- Real-time payment status updates
+- Transaction history in Azure SQL Database
+- Responsive design
+- Error handling and validation
+- Payment confirmation page
 
-## Contributing
+## Development Guidelines
 
-If you would like to contribute to this project, please fork the repository and submit a pull request with your changes.
+1. **Branch Strategy**
+   - Main branch: Production-ready code
+   - Feature branches: New features/fixes
+
+2. **Code Style**
+   - Use ESLint configuration
+   - Follow React best practices
+   - Include proper error handling
+
+3. **Testing**
+   - Test with Stripe test keys
+   - Verify database connections
+   - Check payment flows
+
+## Troubleshooting
+
+Common issues and solutions:
+1. **Payment Processing Errors**
+   - Verify Stripe keys
+   - Check API endpoint availability
+   - Review transaction logs
+
+2. **Database Connection Issues**
+   - Confirm firewall rules
+   - Verify connection strings
+   - Check SQL credentials
+
+## Support
+
+For support, please contact:
+- Technical issues: [Your Contact]
+- Payment issues: [Support Contact]
 
 ## License
 
-This project is open-source and available under the [MIT License](LICENSE).
+This project is licensed under the MIT License - see the LICENSE file for details.
