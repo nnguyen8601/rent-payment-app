@@ -14,7 +14,6 @@ const PaymentComplete = () => {
             return;
         }
 
-        // Retrieve payment intent from URL
         const clientSecret = new URLSearchParams(window.location.search).get(
             'payment_intent_client_secret'
         );
@@ -27,7 +26,8 @@ const PaymentComplete = () => {
             return;
         }
 
-        stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
+        stripe.retrievePaymentIntent(clientSecret).then(async ({ paymentIntent }) => {
+            // First update the UI
             switch (paymentIntent.status) {
                 case 'succeeded':
                     setPaymentStatus({
@@ -36,19 +36,38 @@ const PaymentComplete = () => {
                         amount: (paymentIntent.amount / 100).toFixed(2),
                         date: new Date(paymentIntent.created * 1000).toLocaleDateString()
                     });
+
+                    // Then update the database status
+                    try {
+                        await fetch('/api/update-payment-status', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                paymentIntentId: paymentIntent.id,
+                                status: paymentIntent.status
+                            })
+                        });
+                    } catch (error) {
+                        console.error('Failed to update payment status:', error);
+                    }
                     break;
+
                 case 'processing':
                     setPaymentStatus({
                         status: 'processing',
                         message: 'Your payment is processing.'
                     });
                     break;
+
                 case 'requires_payment_method':
                     setPaymentStatus({
                         status: 'error',
                         message: 'Your payment was not successful, please try again.'
                     });
                     break;
+
                 default:
                     setPaymentStatus({
                         status: 'error',

@@ -14,6 +14,7 @@ module.exports = async function (context, req) {
     let connection;
     try {
         const { paymentIntentId, status } = req.body;
+        context.log('Updating payment status:', { paymentIntentId, status });
 
         if (!paymentIntentId || !status) {
             context.res = {
@@ -27,15 +28,31 @@ module.exports = async function (context, req) {
         connection = await sql.connect(config);
 
         // Update payment status
-        await sql.query`
+        const result = await sql.query`
             UPDATE RentPayments
-            SET Status = ${status}
+            SET Status = ${status},
+                UpdatedAt = GETDATE()
+            OUTPUT INSERTED.*
             WHERE StripePaymentId = ${paymentIntentId}
         `;
 
+        context.log('Update result:', result);
+
+        if (result.rowsAffected[0] === 0) {
+            context.res = {
+                status: 404,
+                body: { error: "Payment record not found" }
+            };
+            return;
+        }
+
         context.res = {
             status: 200,
-            body: { success: true }
+            body: { 
+                success: true,
+                updatedStatus: status,
+                paymentIntentId: paymentIntentId
+            }
         };
 
     } catch (error) {
