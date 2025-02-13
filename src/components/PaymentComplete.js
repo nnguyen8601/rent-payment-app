@@ -30,24 +30,29 @@ const PaymentComplete = () => {
             // First update the UI
             switch (paymentIntent.status) {
                 case 'succeeded':
-                    setPaymentStatus({
-                        status: 'success',
-                        message: 'Payment successful! Thank you for your payment.',
-                        amount: (paymentIntent.amount / 100).toFixed(2),
-                        date: new Date(paymentIntent.created * 1000).toLocaleDateString()
-                    });
-
-                    // Then update the database status
+                    // First update the database status
                     try {
-                        await fetch('/api/update-payment-status', {
+                        const statusResponse = await fetch('/api/update-payment-status', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
                             },
                             body: JSON.stringify({
                                 paymentIntentId: paymentIntent.id,
-                                status: paymentIntent.status
+                                status: 'succeeded' // Explicitly set status to succeeded
                             })
+                        });
+
+                        if (!statusResponse.ok) {
+                            console.error('Failed to update payment status:', await statusResponse.text());
+                        }
+
+                        // Then update UI
+                        setPaymentStatus({
+                            status: 'success',
+                            message: 'Payment successful! Thank you for your payment.',
+                            amount: (paymentIntent.amount / 100).toFixed(2),
+                            date: new Date(paymentIntent.created * 1000).toLocaleDateString()
                         });
                     } catch (error) {
                         console.error('Failed to update payment status:', error);
