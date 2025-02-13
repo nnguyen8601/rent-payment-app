@@ -20,80 +20,67 @@ const config = {
 module.exports = async function (context, req) {
     try {
         // Validate request
-        if (!req.body || !req.body.paymentMethodId || !req.body.amount || 
+        if (!req.body || !req.body.amount || 
             !req.body.renterName || !req.body.rentLocation) {
             context.res = {
                 status: 400,
-                body: "Missing required payment information"
+                body: { error: "Missing required payment information" }
             };
             return;
         }
 
-        // Process payment with Stripe
+        // Create a PaymentIntent with the order amount and currency
         const paymentIntent = await stripe.paymentIntents.create({
-            amount: Math.round(parseFloat(req.body.amount) * 100),
+            amount: Math.round(parseFloat(req.body.amount) * 100), // convert to cents
             currency: 'usd',
-            payment_method: req.body.paymentMethodId,
-            confirmation_method: 'manual',
-            confirm: true,
-            description: `Rent payment for ${req.body.renterName} - ${req.body.rentLocation}`,
-        });
-
-        // If payment successful, store transaction in database
-        if (paymentIntent.status === 'succeeded') {
-            // Connect to database
-            await sql.connect(config);
-
-            // Create transaction record
-            const transaction = {
-                transactionId: paymentIntent.id,
+            automatic_payment_methods: {
+                enabled: true,
+            },
+            metadata: {
                 renterName: req.body.renterName,
                 rentLocation: req.body.rentLocation,
-                amount: parseFloat(req.body.amount),
-                paymentDate: new Date(),
-                status: paymentIntent.status,
-                stripePaymentId: paymentIntent.id,
-                zipCode: req.body.zipCode
-            };
+                zipCode: req.body.zipCode || ''
+            }
+        });
 
-            // Insert into database
-            const result = await sql.query`
-                INSERT INTO RentPayments (
-                    TransactionId,
-                    RenterName,
-                    RentLocation,
-                    Amount,
-                    PaymentDate,
-                    Status,
-                    StripePaymentId,
-                    ZipCode
-                )
-                VALUES (
-                    ${transaction.transactionId},
-                    ${transaction.renterName},
-                    ${transaction.rentLocation},
-                    ${transaction.amount},
-                    ${transaction.paymentDate},
-                    ${transaction.status},
-                    ${transaction.stripePaymentId},
-                    ${transaction.zipCode}
-                )
-            `;
+        // Return the client secret
+        context.res = {
+            status: 200,
+            body: {
+                clientSecret: paymentIntent.client_secret
+            }
+        };
 
-            context.res = {
-                status: 200,
-                body: {
-                    success: true,
-                    paymentIntent: paymentIntent,
-                    transactionId: transaction.transactionId
-                }
-            };
-        }
+        // Store transaction intent in database
+        await sql.connect(config);
+        await sql.query`
+            INSERT INTO RentPayments (
+                TransactionId,
+                RenterName,
+                RentLocation,
+                Amount,
+                PaymentDate,
+                Status,
+                StripePaymentId,
+                ZipCode
+            )
+            VALUES (
+                ${paymentIntent.id},
+                ${req.body.renterName},
+                ${req.body.rentLocation},
+                ${parseFloat(req.body.amount)},
+                ${new Date()},
+                'pending',
+                ${paymentIntent.id},
+                ${req.body.zipCode || ''}
+            )
+        `;
+
     } catch (error) {
+        context.log.error('Payment error:', error);
         context.res = {
             status: 500,
             body: {
-                success: false,
                 error: error.message
             }
         };
