@@ -45,7 +45,6 @@ const PaymentForm = () => {
         e.preventDefault();
 
         if (!stripe || !elements) {
-            // Stripe.js hasn't loaded yet
             return;
         }
 
@@ -53,8 +52,8 @@ const PaymentForm = () => {
         setPaymentStatus(null);
 
         try {
-            // Create payment intent on your backend
-            const createPaymentIntent = await fetch('/api/process-payment', {
+            // First, create payment intent and get clientSecret
+            const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -67,11 +66,16 @@ const PaymentForm = () => {
                 })
             });
 
-            const { clientSecret } = await createPaymentIntent.json();
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
 
-            // Confirm the payment with Stripe
+            // Use the clientSecret to confirm payment
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
+                clientSecret: data.clientSecret, // Use the clientSecret from backend
                 confirmParams: {
                     return_url: `${window.location.origin}/payment-complete`,
                     payment_method_data: {
