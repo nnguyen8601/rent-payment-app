@@ -7,18 +7,25 @@ This is a simple React web application that allows residents to pay their rent o
 ## Project Structure
 
 ```
-rent-payment-app
-├── public
-│   ├── index.html          # Main HTML file for the application
-├── src
-│   ├── components
-│   │   └── PaymentForm.js  # Component for the rent payment form
-│   ├── App.js              # Main application component
-│   ├── index.js            # Entry point of the React application
-│   └── styles
-│       └── App.css         # CSS styles for the application
-├── package.json            # npm configuration file
-└── README.md               # Documentation for the project
+rent-payment-app/
+├── api/                      # Azure Functions backend
+│   ├── ProcessPayment/       # Payment processing function
+│   │   ├── function.json    # Function configuration
+│   │   └── index.js         # Payment logic
+│   ├── local.settings.json  # Local development settings
+│   └── package.json         # API dependencies
+├── src/                     # React frontend
+│   ├── components/          # React components
+│   │   └── PaymentForm.js   # Payment form component
+│   ├── styles/             # CSS styles
+│   │   ├── App.css         # App styles
+│   │   └── PaymentForm.css # Form styles
+│   ├── App.js              # Main React component
+│   └── index.js            # React entry point
+├── public/                  # Static files
+├── package.json            # Frontend dependencies
+└── staticwebapp.config.json # Azure Static Web App config
+
 ```
 
 ## Getting Started
