@@ -39,6 +39,11 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/.auth/logout",
+      "methods": ["GET", "POST"],
+      "allowedRoles": ["authenticated"]
+    },
+    {
       "route": "/*",
       "allowedRoles": ["anonymous", "authenticated"]
     }
