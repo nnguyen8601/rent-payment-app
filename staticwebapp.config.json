@@ -40,8 +40,13 @@
     },
     {
       "route": "/.auth/logout",
-      "methods": ["GET", "POST"],
+      "methods": ["GET"],
       "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/.auth/logout/complete",
+      "methods": ["GET"],
+      "allowedRoles": ["anonymous"]
     },
     {
       "route": "/*",
