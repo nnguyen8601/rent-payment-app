@@ -14,14 +14,20 @@
           },
           "login": {
             "nameClaimType": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier",
-            "scopes": ["openid", "offline_access"],
-            "loginParameterNames": []
+            "scopes": ["openid", "profile", "email", "offline_access"],
+            "loginParameterNames": [],
+            "responseType": "code"
           }
         }
       }
     }
   },
   "routes": [
+    {
+      "route": "/.auth/login/aadb2c",
+      "methods": ["GET", "POST"],
+      "allowedRoles": ["anonymous"]
+    },
     {
       "route": "/api/login",
       "methods": ["POST"],
@@ -34,11 +40,18 @@
     },
     {
       "route": "/*",
-      "allowedRoles": ["anonymous"]
+      "allowedRoles": ["anonymous", "authenticated"]
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*.{png,jpg,gif}", "/css/*"]
-  }
+    "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/.auth/*"]
+  },
+  "platformErrorOverrides": [
+    {
+      "errorType": "Unauthenticated",
+      "statusCode": 302,
+      "serve": "/.auth/login/aadb2c"
+    }
+  ]
 } 
