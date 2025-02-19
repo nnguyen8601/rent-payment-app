@@ -1,9 +1,11 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import PaymentForm from './components/PaymentForm';
 import PaymentComplete from './components/PaymentComplete';
+import Login from './components/Login';
+import Logout from './components/Logout';
 import './styles/App.css';
 
 // Add more detailed logging
@@ -33,28 +35,57 @@ const options = {
 };
 
 const App = () => {
+    const [isAuthenticated, setIsAuthenticated] = useState(null);
+
+    useEffect(() => {
+        // Check authentication status
+        fetch('/.auth/me')
+            .then(response => response.json())
+            .then(data => {
+                setIsAuthenticated(!!data.clientPrincipal);
+            })
+            .catch(() => {
+                setIsAuthenticated(false);
+            });
+    }, []);
+
+    // Show loading state while checking authentication
+    if (isAuthenticated === null) {
+        return <div>Loading...</div>;
+    }
+
     return (
         <Router>
             <div className="App">
-                <h1>Rent Payment</h1>
-                <Routes>
-                    <Route 
-                        path="/" 
-                        element={
-                            <Elements stripe={stripePromise} options={options}>
-                                <PaymentForm />
-                            </Elements>
-                        } 
-                    />
-                    <Route 
-                        path="/payment-complete" 
-                        element={
-                            <Elements stripe={stripePromise}>
-                                <PaymentComplete />
-                            </Elements>
-                        } 
-                    />
-                </Routes>
+                {isAuthenticated ? (
+                    <>
+                        <h1>Rent Payment</h1>
+                        <Logout />
+                        <Routes>
+                            <Route 
+                                path="/" 
+                                element={
+                                    <Elements stripe={stripePromise} options={options}>
+                                        <PaymentForm />
+                                    </Elements>
+                                } 
+                            />
+                            <Route 
+                                path="/payment-complete" 
+                                element={
+                                    <Elements stripe={stripePromise}>
+                                        <PaymentComplete />
+                                    </Elements>
+                                } 
+                            />
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </>
+                ) : (
+                    <Routes>
+                        <Route path="*" element={<Login />} />
+                    </Routes>
+                )}
             </div>
         </Router>
     );
