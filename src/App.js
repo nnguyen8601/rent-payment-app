@@ -6,6 +6,8 @@ import PaymentForm from './components/PaymentForm';
 import PaymentComplete from './components/PaymentComplete';
 import Login from './components/Login';
 import Logout from './components/Logout';
+import UserAccount from './components/UserAccount';
+import Registration from './components/Registration';
 import './styles/App.css';
 
 // Add more detailed logging
@@ -59,11 +61,12 @@ const App = () => {
             <div className="App">
                 {isAuthenticated ? (
                     <>
-                        <h1>Rent Payment</h1>
                         <Logout />
                         <Routes>
+                            <Route path="/" element={<UserAccount />} />
+                            <Route path="/register" element={<Registration />} />
                             <Route 
-                                path="/" 
+                                path="/payment" 
                                 element={
                                     <Elements stripe={stripePromise} options={options}>
                                         <PaymentForm />
