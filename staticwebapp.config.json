@@ -29,16 +29,6 @@
       "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/api/login",
-      "methods": ["POST"],
-      "allowedRoles": ["anonymous"]
-    },
-    {
-      "route": "/api/process-payment",
-      "methods": ["POST"],
-      "allowedRoles": ["anonymous"]
-    },
-    {
       "route": "/.auth/logout",
       "methods": ["GET"],
       "allowedRoles": ["authenticated"]
@@ -49,13 +39,33 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/api/login",
+      "methods": ["POST"],
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/process-payment",
+      "methods": ["POST"],
+      "allowedRoles": ["anonymous"]
+    },
+    {
+      "route": "/api/register-tenant",
+      "methods": ["POST"],
+      "authLevel": "anonymous"
+    },
+    {
+      "route": "/api/tenant-by-email",
+      "methods": ["GET"],
+      "authLevel": "anonymous"
+    },
+    {
       "route": "/*",
       "allowedRoles": ["anonymous", "authenticated"]
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
-    "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/.auth/*"]
+    "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/api/*", "/.auth/*"]
   },
   "platformErrorOverrides": [
     {

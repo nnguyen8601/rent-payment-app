@@ -11,6 +11,7 @@ const UserAccount = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
+        // Get user info from B2C
         const authResponse = await fetch('/.auth/me');
         const authData = await authResponse.json();
 
@@ -18,17 +19,22 @@ const UserAccount = () => {
           setUserInfo(authData.clientPrincipal);
           
           // Check if user exists in our database
-          const tenantResponse = await fetch(`/api/tenant-by-email?email=${encodeURIComponent(authData.clientPrincipal.userDetails)}`);
-          const tenantData = await tenantResponse.json();
+          const tenantResponse = await fetch(`/api/get-user-data?email=${encodeURIComponent(authData.clientPrincipal.userDetails)}`);
           
-          if (tenantResponse.ok) {
-            setTenantInfo(tenantData);
-          } else {
-            // Redirect to registration if user doesn't exist
-            navigate('/register');
+          if (!tenantResponse.ok) {
+            if (tenantResponse.status === 404) {
+              // User not found, redirect to registration
+              navigate('/register');
+              return;
+            }
+            throw new Error('Failed to fetch tenant data');
           }
+
+          const tenantData = await tenantResponse.json();
+          setTenantInfo(tenantData);
         }
       } catch (err) {
+        console.error('Error fetching user data:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -50,28 +56,32 @@ const UserAccount = () => {
         backgroundColor: 'white', 
         padding: '20px', 
         borderRadius: '8px',
-        marginBottom: '20px'
+        marginBottom: '20px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
         <h2>Account Information</h2>
-        <p>Email: {userInfo.userDetails}</p>
-        <p>Property: {tenantInfo.propertyName}</p>
-        <p>Monthly Rent: ${tenantInfo.monthlyRent}</p>
+        <p><strong>Email:</strong> {tenantInfo.email}</p>
+        <p><strong>Property:</strong> {tenantInfo.propertyName}</p>
       </div>
 
       <div className="payment-status" style={{ 
         backgroundColor: 'white', 
         padding: '20px', 
-        borderRadius: '8px' 
+        borderRadius: '8px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
       }}>
         <h2>Rent Payment Status</h2>
         {tenantInfo.hasPaidCurrentMonth ? (
-          <div style={{ color: 'green' }}>
-            <p>✓ Rent paid for this month</p>
-            <p>Last payment: {new Date(tenantInfo.lastPaymentDate).toLocaleDateString()}</p>
+          <div style={{ color: 'green', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>✓</span>
+            <span>Rent paid for this month</span>
           </div>
         ) : (
           <div>
-            <p style={{ color: 'red' }}>❗ Rent payment pending for this month</p>
+            <p style={{ color: 'red', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '24px' }}>⚠</span>
+              <span>Rent payment pending for this month</span>
+            </p>
             <button
               onClick={() => navigate('/payment')}
               style={{
@@ -81,8 +91,11 @@ const UserAccount = () => {
                 border: 'none',
                 borderRadius: '4px',
                 marginTop: '10px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                transition: 'background-color 0.2s'
               }}
+              onMouseOver={e => e.target.style.backgroundColor = '#0056b3'}
+              onMouseOut={e => e.target.style.backgroundColor = '#007bff'}
             >
               Pay Now
             </button>
