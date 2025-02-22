@@ -11,39 +11,56 @@ const UserAccount = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get user info from B2C
         console.log('Fetching auth data...');
         const authResponse = await fetch('/.auth/me');
+        if (!authResponse.ok) {
+          throw new Error('Failed to fetch authentication data');
+        }
+        
         const authData = await authResponse.json();
         console.log('Auth data:', authData);
 
-        if (authData.clientPrincipal) {
-          setUserInfo(authData.clientPrincipal);
-          const userEmail = authData.clientPrincipal.userDetails;
-          console.log('User email:', userEmail);
-          
-          // Check if user exists in our database
-          const url = `/api/tenant-by-email?email=${encodeURIComponent(userEmail)}`;
-          console.log('Fetching tenant data from:', url);
-          
-          const tenantResponse = await fetch(url);
-          console.log('Tenant response status:', tenantResponse.status);
-          
-          if (!tenantResponse.ok) {
-            if (tenantResponse.status === 404) {
-              console.log('User not found, redirecting to registration');
-              navigate('/register');
-              return;
-            }
-            const errorData = await tenantResponse.json();
-            console.error('API Error:', errorData);
-            throw new Error(errorData.error || 'Failed to fetch tenant data');
-          }
-
-          const tenantData = await tenantResponse.json();
-          console.log('Tenant data:', tenantData);
-          setTenantInfo(tenantData);
+        if (!authData.clientPrincipal) {
+          throw new Error('No authentication data found');
         }
+
+        setUserInfo(authData.clientPrincipal);
+        const userEmail = authData.clientPrincipal.userDetails;
+        console.log('User email:', userEmail);
+        
+        const url = `/api/tenant-by-email?email=${encodeURIComponent(userEmail)}`;
+        console.log('Fetching tenant data from:', url);
+        
+        const tenantResponse = await fetch(url);
+        console.log('Tenant response status:', tenantResponse.status);
+        
+        // Always try to parse the response body
+        const responseData = await tenantResponse.text();
+        console.log('Raw response:', responseData);
+        
+        let jsonData;
+        try {
+          jsonData = responseData ? JSON.parse(responseData) : null;
+        } catch (parseError) {
+          console.error('Failed to parse response:', parseError);
+          throw new Error(`Invalid response from server: ${responseData}`);
+        }
+
+        if (!tenantResponse.ok) {
+          if (tenantResponse.status === 404) {
+            console.log('User not found, redirecting to registration');
+            navigate('/register');
+            return;
+          }
+          throw new Error(jsonData?.error || 'Failed to fetch tenant data');
+        }
+
+        if (!jsonData) {
+          throw new Error('No data received from server');
+        }
+
+        console.log('Tenant data:', jsonData);
+        setTenantInfo(jsonData);
       } catch (err) {
         console.error('Error details:', {
           message: err.message,

@@ -23,6 +23,15 @@ export default async function handler(req, res) {
       }
     };
 
+    // Test if we have all required environment variables
+    if (!config.user || !config.password || !config.database || !config.server) {
+      console.error('Missing database configuration');
+      return res.status(500).json({ 
+        error: 'Database configuration error',
+        details: 'Missing required database configuration'
+      });
+    }
+
     pool = await sql.connect(config);
     console.log('Database connected successfully');
     
@@ -48,20 +57,30 @@ export default async function handler(req, res) {
 
     console.log('Query result:', result);
 
-    if (result.recordset.length === 0) {
+    if (!result.recordset || result.recordset.length === 0) {
       console.log('No tenant found');
-      return res.status(404).json({ error: 'Tenant not found' });
+      return res.status(404).json({ 
+        error: 'Tenant not found',
+        message: `No tenant found for email: ${email}`
+      });
     }
 
-    console.log('Sending tenant data');
-    res.json(result.recordset[0]);
+    console.log('Sending tenant data:', result.recordset[0]);
+    return res.status(200).json(result.recordset[0]);
   } catch (error) {
     console.error('Database error:', error);
-    res.status(500).json({ 
+    return res.status(500).json({ 
       error: 'Failed to fetch tenant information',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+      details: error.message
     });
   } finally {
-    if (pool) await pool.close();
+    if (pool) {
+      try {
+        await pool.close();
+        console.log('Database connection closed');
+      } catch (err) {
+        console.error('Error closing database connection:', err);
+      }
+    }
   }
 } 
