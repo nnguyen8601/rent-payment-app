@@ -59,6 +59,11 @@
       "authLevel": "anonymous"
     },
     {
+      "route": "/api/test-db-connection",
+      "methods": ["GET"],
+      "authLevel": "anonymous"
+    },
+    {
       "route": "/*",
       "allowedRoles": ["anonymous", "authenticated"]
     }

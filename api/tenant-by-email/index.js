@@ -5,6 +5,18 @@ export default async function handler(req, res) {
   const { email } = req.query;
   console.log('Email parameter:', email);
 
+  // Check environment variables before attempting connection
+  const requiredEnvVars = ['SQL_SERVER', 'SQL_DATABASE', 'SQL_USER', 'SQL_PASSWORD'];
+  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  
+  if (missingEnvVars.length > 0) {
+    console.error('Missing environment variables:', missingEnvVars);
+    return res.status(500).json({
+      error: 'Server configuration error',
+      details: `Missing environment variables: ${missingEnvVars.join(', ')}`
+    });
+  }
+
   if (!email) {
     console.log('No email provided');
     return res.status(400).json({ error: 'Email parameter is required' });
@@ -12,26 +24,23 @@ export default async function handler(req, res) {
 
   let pool;
   try {
-    console.log('Attempting database connection...');
+    console.log('Creating database config...');
     const config = {
       user: process.env.SQL_USER,
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DATABASE,
       server: process.env.SQL_SERVER,
       options: {
-        encrypt: true
+        encrypt: true,
+        trustServerCertificate: false,
+        connectionTimeout: 30000
       }
     };
 
-    // Test if we have all required environment variables
-    if (!config.user || !config.password || !config.database || !config.server) {
-      console.error('Missing database configuration');
-      return res.status(500).json({ 
-        error: 'Database configuration error',
-        details: 'Missing required database configuration'
-      });
-    }
-
+    console.log('Database server:', config.server);
+    console.log('Database name:', config.database);
+    
+    console.log('Attempting database connection...');
     pool = await sql.connect(config);
     console.log('Database connected successfully');
     
@@ -55,23 +64,30 @@ export default async function handler(req, res) {
       WHERE t.Email = ${email}
     `;
 
-    console.log('Query result:', result);
+    console.log('Query executed successfully');
 
     if (!result.recordset || result.recordset.length === 0) {
-      console.log('No tenant found');
+      console.log('No tenant found for email:', email);
       return res.status(404).json({ 
         error: 'Tenant not found',
         message: `No tenant found for email: ${email}`
       });
     }
 
-    console.log('Sending tenant data:', result.recordset[0]);
+    console.log('Tenant found, sending data');
     return res.status(200).json(result.recordset[0]);
   } catch (error) {
-    console.error('Database error:', error);
+    console.error('Database error details:', {
+      message: error.message,
+      code: error.code,
+      state: error.state,
+      stack: error.stack
+    });
+    
     return res.status(500).json({ 
-      error: 'Failed to fetch tenant information',
-      details: error.message
+      error: 'Database connection error',
+      details: error.message,
+      code: error.code
     });
   } finally {
     if (pool) {
