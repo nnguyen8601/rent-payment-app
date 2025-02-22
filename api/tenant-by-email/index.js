@@ -1,17 +1,18 @@
 import sql from 'mssql';
-import { getGraphClient } from '../utils/graphClient';
 
 export default async function handler(req, res) {
-  // Get email from query parameter instead of route parameter
-  const email = req.query.email;
+  console.log('Received request for tenant data');
+  const { email } = req.query;
+  console.log('Email parameter:', email);
 
   if (!email) {
+    console.log('No email provided');
     return res.status(400).json({ error: 'Email parameter is required' });
   }
 
   let pool;
   try {
-    console.log('Attempting to connect to SQL database...');
+    console.log('Attempting database connection...');
     const config = {
       user: process.env.SQL_USER,
       password: process.env.SQL_PASSWORD,
@@ -23,51 +24,44 @@ export default async function handler(req, res) {
     };
 
     pool = await sql.connect(config);
-    console.log('Successfully connected to SQL database');
+    console.log('Database connected successfully');
     
-    // Query to get tenant information
     const result = await sql.query`
       SELECT 
-        t.TenantId,
         t.FirstName,
         t.LastName,
-        t.Age,
-        t.Gender,
-        t.Phone,
-        t.EmergencyContact,
-        t.MoveInDate,
-        t.LeaseEndDate,
+        t.Email,
         p.PropertyName,
-        t.UnitNumber,
-        t.MonthlyRent,
-        t.LeaseType
+        CASE 
+          WHEN EXISTS (
+            SELECT 1 FROM PaymentHistory ph 
+            WHERE ph.TenantId = t.TenantId 
+            AND MONTH(ph.PaymentDate) = MONTH(GETDATE())
+            AND YEAR(ph.PaymentDate) = YEAR(GETDATE())
+          ) THEN 1 
+          ELSE 0 
+        END as hasPaidCurrentMonth
       FROM Tenants t
-      LEFT JOIN Properties p ON t.PropertyId = p.PropertyId
+      JOIN Properties p ON t.PropertyId = p.PropertyId
       WHERE t.Email = ${email}
     `;
 
+    console.log('Query result:', result);
+
     if (result.recordset.length === 0) {
-      return res.status(404).json({ 
-        error: 'Tenant not found',
-        message: 'No tenant record found for this email'
-      });
+      console.log('No tenant found');
+      return res.status(404).json({ error: 'Tenant not found' });
     }
 
+    console.log('Sending tenant data');
     res.json(result.recordset[0]);
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch tenant information',
-      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error',
-      code: error.code
+      details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
     });
   } finally {
-    if (pool) {
-      try {
-        await pool.close();
-      } catch (err) {
-        console.error('Error closing connection:', err);
-      }
-    }
+    if (pool) await pool.close();
   }
 } 

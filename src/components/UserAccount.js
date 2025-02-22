@@ -12,29 +12,44 @@ const UserAccount = () => {
     const fetchUserData = async () => {
       try {
         // Get user info from B2C
+        console.log('Fetching auth data...');
         const authResponse = await fetch('/.auth/me');
         const authData = await authResponse.json();
+        console.log('Auth data:', authData);
 
         if (authData.clientPrincipal) {
           setUserInfo(authData.clientPrincipal);
+          const userEmail = authData.clientPrincipal.userDetails;
+          console.log('User email:', userEmail);
           
-          // Check if user exists in our database using the correct endpoint
-          const tenantResponse = await fetch(`/api/tenant-by-email?email=${encodeURIComponent(authData.clientPrincipal.userDetails)}`);
+          // Check if user exists in our database
+          const url = `/api/tenant-by-email?email=${encodeURIComponent(userEmail)}`;
+          console.log('Fetching tenant data from:', url);
+          
+          const tenantResponse = await fetch(url);
+          console.log('Tenant response status:', tenantResponse.status);
           
           if (!tenantResponse.ok) {
             if (tenantResponse.status === 404) {
-              // User not found, redirect to registration
+              console.log('User not found, redirecting to registration');
               navigate('/register');
               return;
             }
-            throw new Error('Failed to fetch tenant data');
+            const errorData = await tenantResponse.json();
+            console.error('API Error:', errorData);
+            throw new Error(errorData.error || 'Failed to fetch tenant data');
           }
 
           const tenantData = await tenantResponse.json();
+          console.log('Tenant data:', tenantData);
           setTenantInfo(tenantData);
         }
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          name: err.name
+        });
         setError(err.message);
       } finally {
         setLoading(false);
