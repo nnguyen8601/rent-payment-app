@@ -18,8 +18,8 @@ const UserAccount = () => {
         if (authData.clientPrincipal) {
           setUserInfo(authData.clientPrincipal);
           
-          // Check if user exists in our database
-          const tenantResponse = await fetch(`/api/get-user-data?email=${encodeURIComponent(authData.clientPrincipal.userDetails)}`);
+          // Check if user exists in our database using the correct endpoint
+          const tenantResponse = await fetch(`/api/tenant-by-email?email=${encodeURIComponent(authData.clientPrincipal.userDetails)}`);
           
           if (!tenantResponse.ok) {
             if (tenantResponse.status === 404) {
