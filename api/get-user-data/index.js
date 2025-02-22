@@ -14,7 +14,10 @@ export default async function handler(req, res) {
       password: process.env.SQL_PASSWORD,
       database: process.env.SQL_DATABASE,
       server: process.env.SQL_SERVER,
-      options: { encrypt: true }
+      options: {
+        encrypt: true,
+        trustServerCertificate: false
+      }
     };
 
     pool = await sql.connect(config);
@@ -39,8 +42,8 @@ export default async function handler(req, res) {
       WHERE t.Email = ${email}
     `;
 
-    if (result.recordset.length === 0) {
-      return res.status(404).json({ error: 'Tenant not found' });
+    if (!result.recordset || result.recordset.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     res.json(result.recordset[0]);

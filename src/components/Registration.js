@@ -13,7 +13,7 @@ const Registration = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // In a real app, fetch properties from API
+    // Fetch properties list
     setProperties([
       { id: 1, name: 'CILA 1' },
       { id: 2, name: 'CILA 2' },
@@ -27,10 +27,12 @@ const Registration = () => {
     setError(null);
 
     try {
+      // Get user email from B2C token
       const authResponse = await fetch('/.auth/me');
       const authData = await authResponse.json();
       const email = authData.clientPrincipal.userDetails;
 
+      // Save user data
       const response = await fetch('/api/save-user-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,8 +42,12 @@ const Registration = () => {
         }),
       });
 
-      if (!response.ok) throw new Error('Registration failed');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Registration failed');
+      }
 
+      // Redirect to user account page
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -100,7 +106,7 @@ const Registration = () => {
             padding: '10px 20px',
             border: 'none',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: loading ? 'not-allowed' : 'pointer'
           }}
         >
           {loading ? 'Submitting...' : 'Complete Registration'}

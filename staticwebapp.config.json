@@ -39,29 +39,19 @@
       "allowedRoles": ["anonymous"]
     },
     {
-      "route": "/api/login",
+      "route": "/api/get-user-data",
+      "methods": ["GET"],
+      "authLevel": "anonymous"
+    },
+    {
+      "route": "/api/save-user-data",
       "methods": ["POST"],
-      "allowedRoles": ["anonymous"]
+      "authLevel": "anonymous"
     },
     {
       "route": "/api/process-payment",
       "methods": ["POST"],
       "allowedRoles": ["anonymous"]
-    },
-    {
-      "route": "/api/register-tenant",
-      "methods": ["POST"],
-      "authLevel": "anonymous"
-    },
-    {
-      "route": "/api/tenant-by-email",
-      "methods": ["GET"],
-      "authLevel": "anonymous"
-    },
-    {
-      "route": "/api/test-db-connection",
-      "methods": ["GET"],
-      "authLevel": "anonymous"
     },
     {
       "route": "/*",

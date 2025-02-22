@@ -11,14 +11,9 @@ const UserAccount = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        console.log('Fetching auth data...');
+        // Get user info from B2C
         const authResponse = await fetch('/.auth/me');
-        if (!authResponse.ok) {
-          throw new Error('Failed to fetch authentication data');
-        }
-        
         const authData = await authResponse.json();
-        console.log('Auth data:', authData);
 
         if (!authData.clientPrincipal) {
           throw new Error('No authentication data found');
@@ -26,47 +21,20 @@ const UserAccount = () => {
 
         setUserInfo(authData.clientPrincipal);
         const userEmail = authData.clientPrincipal.userDetails;
-        console.log('User email:', userEmail);
         
-        const url = `/api/tenant-by-email?email=${encodeURIComponent(userEmail)}`;
-        console.log('Fetching tenant data from:', url);
+        // Get user data from database
+        const response = await fetch(`/api/get-user-data?email=${encodeURIComponent(userEmail)}`);
         
-        const tenantResponse = await fetch(url);
-        console.log('Tenant response status:', tenantResponse.status);
-        
-        // Always try to parse the response body
-        const responseData = await tenantResponse.text();
-        console.log('Raw response:', responseData);
-        
-        let jsonData;
-        try {
-          jsonData = responseData ? JSON.parse(responseData) : null;
-        } catch (parseError) {
-          console.error('Failed to parse response:', parseError);
-          throw new Error(`Invalid response from server: ${responseData}`);
+        if (!response.ok) {
+          // If user data not found, they need to register
+          navigate('/register');
+          return;
         }
 
-        if (!tenantResponse.ok) {
-          if (tenantResponse.status === 404) {
-            console.log('User not found, redirecting to registration');
-            navigate('/register');
-            return;
-          }
-          throw new Error(jsonData?.error || 'Failed to fetch tenant data');
-        }
-
-        if (!jsonData) {
-          throw new Error('No data received from server');
-        }
-
-        console.log('Tenant data:', jsonData);
-        setTenantInfo(jsonData);
+        const data = await response.json();
+        setTenantInfo(data);
       } catch (err) {
-        console.error('Error details:', {
-          message: err.message,
-          stack: err.stack,
-          name: err.name
-        });
+        console.error('Error:', err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -123,11 +91,8 @@ const UserAccount = () => {
                 border: 'none',
                 borderRadius: '4px',
                 marginTop: '10px',
-                cursor: 'pointer',
-                transition: 'background-color 0.2s'
+                cursor: 'pointer'
               }}
-              onMouseOver={e => e.target.style.backgroundColor = '#0056b3'}
-              onMouseOut={e => e.target.style.backgroundColor = '#007bff'}
             >
               Pay Now
             </button>
