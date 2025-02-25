@@ -7,23 +7,24 @@ CREATE TABLE Properties (
 -- Create Tenants table with foreign key to Properties
 CREATE TABLE Tenants (
     TenantId INT IDENTITY(1,1) PRIMARY KEY,
-    Email NVARCHAR(255) NOT NULL UNIQUE,
-    FirstName NVARCHAR(50) NOT NULL,
-    LastName NVARCHAR(50) NOT NULL,
+    FirstName NVARCHAR(100),
+    LastName NVARCHAR(100),
+    Email NVARCHAR(255) UNIQUE,
     PropertyId INT,
+    RegistrationDate DATETIME DEFAULT GETDATE(),
     FOREIGN KEY (PropertyId) REFERENCES Properties(PropertyId)
 );
 
 -- Create PaymentHistory table
 CREATE TABLE PaymentHistory (
-    PaymentId INT IDENTITY(1,1) PRIMARY KEY,
+    HistoryId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId INT,
-    Amount DECIMAL(10, 2) NULL,
-    PaymentDate DATE NOT NULL,
-    PaymentMethod NVARCHAR(50) NULL,
-    TransactionId NVARCHAR(100) NULL,
-    Status NVARCHAR(50) NULL,
-    RentPeriod DATE NULL,
+    Amount DECIMAL(10,2),
+    PaymentDate DATETIME,
+    PaymentMethod NVARCHAR(50),
+    TransactionId NVARCHAR(255),
+    Status NVARCHAR(50),
+    RentPeriod DATE,
     FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId)
 );
 
@@ -31,9 +32,9 @@ CREATE TABLE PaymentHistory (
 CREATE TABLE RentPayments (
     PaymentId INT IDENTITY(1,1) PRIMARY KEY,
     TenantId INT,
-    Amount DECIMAL(10, 2) NOT NULL,
-    PaymentDate DATETIME NOT NULL,
-    StripePaymentId NVARCHAR(100) NULL,
-    Status NVARCHAR(50) NOT NULL,
+    Amount DECIMAL(10,2),
+    PaymentDate DATETIME DEFAULT GETDATE(),
+    StripePaymentId NVARCHAR(255),
+    Status NVARCHAR(50),
     FOREIGN KEY (TenantId) REFERENCES Tenants(TenantId)
 ); 
