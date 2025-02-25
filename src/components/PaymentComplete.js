@@ -89,7 +89,7 @@ const PaymentComplete = () => {
                     break;
             }
 
-            // Get user email
+            // Get user email with proper async handling
             const getUserEmail = async () => {
                 try {
                     const authResponse = await fetch('/.auth/me');
@@ -111,29 +111,31 @@ const PaymentComplete = () => {
                 }
             };
 
-            const email = await getUserEmail();
-            console.log('User email for direct update:', email);
+            // Call the async function and handle the result with promises
+            getUserEmail().then(email => {
+                console.log('User email for direct update:', email);
 
-            if (email) {
-                // Call direct payment update as a fallback
-                fetch('/api/direct-payment-update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        paymentIntentId: paymentIntent.id,
-                        email: email
-                    }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Direct payment update response:', data);
-                })
-                .catch(err => {
-                    console.error('Error in direct payment update:', err);
-                });
-            }
+                if (email) {
+                    // Call direct payment update as a fallback
+                    fetch('/api/direct-payment-update', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            paymentIntentId: paymentIntent.id,
+                            email: email
+                        }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('Direct payment update response:', data);
+                    })
+                    .catch(err => {
+                        console.error('Error in direct payment update:', err);
+                    });
+                }
+            });
         });
     }, [stripe]);
 
