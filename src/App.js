@@ -73,6 +73,14 @@ const App = () => {
                                     </Elements>
                                 } 
                             />
+                            <Route 
+                                path="/payment-complete" 
+                                element={
+                                    <Elements stripe={stripePromise} options={options}>
+                                        <PaymentComplete />
+                                    </Elements>
+                                } 
+                            />
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
                     </>

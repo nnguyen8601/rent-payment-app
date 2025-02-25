@@ -34,19 +34,17 @@ const Registration = () => {
         
         // Extract name claims
         const firstNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'FirstName' || 
-                 claim.typ.includes('givenname')
+          claim => claim.typ === 'extension_FirstName'
         );
         
         const lastNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'LastName' || 
+          claim => claim.typ === 'extension_LastName' || 
+                 claim.typ === 'LastName' || 
                  claim.typ.includes('surname')
         );
         
         const emailClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'Email Addresses' || 
-                 claim.typ === 'emails' || 
-                 claim.typ === 'email'
+          claim => claim.typ === 'emails'
         );
         
         setUserInfo({

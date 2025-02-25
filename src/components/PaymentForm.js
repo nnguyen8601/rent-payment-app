@@ -83,26 +83,28 @@ const PaymentForm = () => {
             }
             
             const data = await response.json();
+            console.log('Payment intent created:', data);
             
-            // Handle form submission
+            // Handle Stripe Elements submission
             const { error: submitError } = await elements.submit();
             if (submitError) {
                 throw new Error(submitError.message);
             }
             
-            // Confirm payment
-            const { error, paymentIntent } = await stripe.confirmPayment({
+            // Confirm the payment
+            const { error } = await stripe.confirmPayment({
                 elements,
-                clientSecret: data.clientSecret,
                 confirmParams: {
                     return_url: `${window.location.origin}/payment-complete`,
-                }
+                },
+                clientSecret: data.clientSecret,
             });
             
+            // This point is only reached if there's an immediate error
+            // If the payment requires confirmation, the user will be redirected
             if (error) {
                 throw new Error(error.message);
             }
-            
         } catch (err) {
             console.error('Payment error:', err);
             setError(err.message);

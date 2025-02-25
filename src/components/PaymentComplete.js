@@ -1,82 +1,81 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useStripe } from '@stripe/react-stripe-js';
 import '../styles/PaymentComplete.css';
 
 const PaymentComplete = () => {
     const stripe = useStripe();
-    const [paymentStatus, setPaymentStatus] = useState({
-        status: 'processing',
-        message: 'Processing your payment...'
-    });
+    const navigate = useNavigate();
+    const [status, setStatus] = useState({ type: 'processing', message: 'Processing your payment...' });
+    const [paymentDetails, setPaymentDetails] = useState(null);
 
     useEffect(() => {
         if (!stripe) {
             return;
         }
 
-        const clientSecret = new URLSearchParams(window.location.search).get(
-            'payment_intent_client_secret'
-        );
+        // Extract the payment intent client secret from the URL
+        const clientSecret = new URLSearchParams(window.location.search).get('payment_intent_client_secret');
 
         if (!clientSecret) {
-            setPaymentStatus({
-                status: 'error',
-                message: 'No payment information found.'
+            setStatus({
+                type: 'error',
+                message: 'No payment information found. Please try again.'
             });
             return;
         }
 
-        stripe.retrievePaymentIntent(clientSecret).then(async ({ paymentIntent }) => {
-            // First update the UI
+        // Retrieve payment intent details
+        stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
+            console.log('Payment intent details:', paymentIntent);
+            
+            // Update payment status in the database
+            fetch('/api/update-payment-status', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    paymentIntentId: paymentIntent.id,
+                    status: paymentIntent.status
+                }),
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Failed to update payment status in database');
+                }
+            }).catch(err => {
+                console.error('Error updating payment status:', err);
+            });
+
+            // Set the UI based on the payment status
             switch (paymentIntent.status) {
-                case 'succeeded':
-                    // First update the database status
-                    try {
-                        const statusResponse = await fetch('/api/update-payment-status', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                paymentIntentId: paymentIntent.id,
-                                status: 'succeeded' // Explicitly set status to succeeded
-                            })
-                        });
-
-                        if (!statusResponse.ok) {
-                            console.error('Failed to update payment status:', await statusResponse.text());
-                        }
-
-                        // Then update UI
-                        setPaymentStatus({
-                            status: 'success',
-                            message: 'Payment successful! Thank you for your payment.',
-                            amount: (paymentIntent.amount / 100).toFixed(2),
-                            date: new Date(paymentIntent.created * 1000).toLocaleDateString()
-                        });
-                    } catch (error) {
-                        console.error('Failed to update payment status:', error);
-                    }
-                    break;
-
-                case 'processing':
-                    setPaymentStatus({
-                        status: 'processing',
-                        message: 'Your payment is processing.'
+                case "succeeded":
+                    setStatus({ 
+                        type: 'success', 
+                        message: 'Payment successful! Thank you for your payment.' 
+                    });
+                    setPaymentDetails({
+                        amount: (paymentIntent.amount / 100).toFixed(2),
+                        date: new Date().toLocaleDateString(),
+                        id: paymentIntent.id
                     });
                     break;
-
-                case 'requires_payment_method':
-                    setPaymentStatus({
-                        status: 'error',
-                        message: 'Your payment was not successful, please try again.'
+                case "processing":
+                    setStatus({ 
+                        type: 'processing', 
+                        message: 'Your payment is processing.' 
                     });
                     break;
-
+                case "requires_payment_method":
+                    setStatus({ 
+                        type: 'error', 
+                        message: 'Your payment was not successful. Please try again.' 
+                    });
+                    break;
                 default:
-                    setPaymentStatus({
-                        status: 'error',
-                        message: 'Something went wrong.'
+                    setStatus({ 
+                        type: 'error', 
+                        message: 'Something went wrong with your payment.' 
                     });
                     break;
             }
@@ -84,33 +83,46 @@ const PaymentComplete = () => {
     }, [stripe]);
 
     return (
-        <div className="payment-complete-container">
-            <div className={`payment-status ${paymentStatus.status}`}>
-                <h2>Payment Status</h2>
-                <div className="status-message">
-                    {paymentStatus.message}
-                </div>
-                {paymentStatus.status === 'success' && (
-                    <div className="payment-details">
-                        <p>Amount paid: ${paymentStatus.amount}</p>
-                        <p>Date: {paymentStatus.date}</p>
-                        <button 
-                            onClick={() => window.location.href = '/'}
-                            className="return-button"
-                        >
-                            Return to Payment Form
-                        </button>
-                    </div>
-                )}
-                {paymentStatus.status === 'error' && (
-                    <button 
-                        onClick={() => window.location.href = '/'}
-                        className="return-button"
-                    >
-                        Try Again
-                    </button>
-                )}
+        <div className="payment-complete" style={{ maxWidth: '600px', margin: '40px auto', padding: '20px' }}>
+            <h1 style={{ marginBottom: '20px' }}>Payment Status</h1>
+            
+            <div style={{ 
+                padding: '20px', 
+                borderRadius: '8px',
+                backgroundColor: 
+                    status.type === 'success' ? '#d4edda' : 
+                    status.type === 'error' ? '#f8d7da' : '#cce5ff',
+                color: 
+                    status.type === 'success' ? '#155724' : 
+                    status.type === 'error' ? '#721c24' : '#004085',
+                marginBottom: '20px'
+            }}>
+                <p style={{ fontSize: '18px' }}>{status.message}</p>
             </div>
+            
+            {paymentDetails && (
+                <div style={{ marginTop: '20px' }}>
+                    <h2>Payment Details</h2>
+                    <p><strong>Amount:</strong> ${paymentDetails.amount}</p>
+                    <p><strong>Date:</strong> {paymentDetails.date}</p>
+                    <p><strong>Transaction ID:</strong> {paymentDetails.id}</p>
+                </div>
+            )}
+            
+            <button
+                onClick={() => navigate('/')}
+                style={{
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    padding: '10px 20px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    marginTop: '20px'
+                }}
+            >
+                Return to Account
+            </button>
         </div>
     );
 };
