@@ -19,6 +19,13 @@
             "responseType": "code"
           }
         }
+      },
+      "azureActiveDirectory": {
+        "registration": {
+          "openIdIssuer": "https://caritasfamilyb2c.b2clogin.com/24cf5eb9-310d-42a7-9373-7d624bb28e27/v2.0/",
+          "clientIdSettingName": "AZURE_CLIENT_ID",
+          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
+        }
       }
     }
   },
@@ -39,34 +46,47 @@
       "allowedRoles": ["anonymous"]
     },
     {
+      "route": "/api/process-payment",
+      "methods": ["POST"],
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/update-payment-status",
+      "methods": ["POST"],
+      "allowedRoles": ["authenticated"]
+    },
+    {
       "route": "/api/get-user-data",
       "methods": ["GET"],
-      "authLevel": "anonymous"
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/api/save-user-data",
       "methods": ["POST"],
-      "authLevel": "anonymous"
+      "allowedRoles": ["authenticated"]
     },
     {
-      "route": "/api/process-payment",
-      "methods": ["POST"],
-      "allowedRoles": ["anonymous"]
+      "route": "/api/get-properties",
+      "methods": ["GET"],
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": ["authenticated"]
     },
     {
       "route": "/*",
-      "allowedRoles": ["anonymous", "authenticated"]
+      "allowedRoles": ["authenticated"]
     }
   ],
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": ["/images/*.{png,jpg,gif}", "/css/*", "/api/*", "/.auth/*"]
   },
-  "platformErrorOverrides": [
-    {
-      "errorType": "Unauthenticated",
+  "responseOverrides": {
+    "401": {
       "statusCode": 302,
-      "serve": "/.auth/login/aadb2c"
+      "redirect": "/.auth/login/aad"
     }
-  ]
+  }
 } 

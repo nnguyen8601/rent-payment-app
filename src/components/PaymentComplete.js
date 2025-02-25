@@ -28,8 +28,9 @@ const PaymentComplete = () => {
         // Retrieve payment intent details
         stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
             console.log('Payment intent details:', paymentIntent);
+            console.log('Full payment intent:', JSON.stringify(paymentIntent));
             
-            // Update payment status in the database
+            // Update payment status in the database using the original working function
             fetch('/api/update-payment-status', {
                 method: 'POST',
                 headers: {
@@ -37,13 +38,21 @@ const PaymentComplete = () => {
                 },
                 body: JSON.stringify({
                     paymentIntentId: paymentIntent.id,
-                    status: paymentIntent.status
+                    status: paymentIntent.status,
+                    // Add any other fields expected by the original function
+                    amount: paymentIntent.amount / 100
                 }),
-            }).then(response => {
-                if (!response.ok) {
-                    console.error('Failed to update payment status in database');
+            })
+            .then(response => response.text())
+            .then(text => {
+                try {
+                    const data = JSON.parse(text);
+                    console.log('Payment status update response:', data);
+                } catch (e) {
+                    console.log('Raw update response:', text);
                 }
-            }).catch(err => {
+            })
+            .catch(err => {
                 console.error('Error updating payment status:', err);
             });
 
@@ -78,6 +87,52 @@ const PaymentComplete = () => {
                         message: 'Something went wrong with your payment.' 
                     });
                     break;
+            }
+
+            // Get user email
+            const getUserEmail = async () => {
+                try {
+                    const authResponse = await fetch('/.auth/me');
+                    const authData = await authResponse.json();
+                    
+                    if (!authData.clientPrincipal) {
+                        console.error('Not authenticated');
+                        return null;
+                    }
+                    
+                    const emailClaim = authData.clientPrincipal.claims.find(
+                        claim => claim.typ === 'emails'
+                    );
+                    
+                    return emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+                } catch (err) {
+                    console.error('Error getting user email:', err);
+                    return null;
+                }
+            };
+
+            const email = await getUserEmail();
+            console.log('User email for direct update:', email);
+
+            if (email) {
+                // Call direct payment update as a fallback
+                fetch('/api/direct-payment-update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        paymentIntentId: paymentIntent.id,
+                        email: email
+                    }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Direct payment update response:', data);
+                })
+                .catch(err => {
+                    console.error('Error in direct payment update:', err);
+                });
             }
         });
     }, [stripe]);

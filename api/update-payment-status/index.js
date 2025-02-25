@@ -13,6 +13,16 @@ const config = {
 module.exports = async function (context, req) {
     let connection;
     try {
+        // Verify authentication
+        const authData = req.headers['x-ms-client-principal'];
+        if (!authData) {
+            context.res = {
+                status: 401,
+                body: { error: 'Authentication required' }
+            };
+            return;
+        }
+
         const { paymentIntentId, status } = req.body;
 
         if (!paymentIntentId || !status) {
@@ -22,6 +32,8 @@ module.exports = async function (context, req) {
             };
             return;
         }
+
+        context.log.info(`Payment update request received: ${JSON.stringify(req.body)}`);
 
         context.log.info(`Updating payment status for: ${paymentIntentId} to ${status}`);
         
@@ -33,6 +45,12 @@ module.exports = async function (context, req) {
             SET Status = ${status}
             WHERE StripePaymentId = ${paymentIntentId}
         `;
+        
+        const updateResult = await sql.query`
+            SELECT COUNT(*) as count FROM RentPayments 
+            WHERE StripePaymentId = ${paymentIntentId}
+        `;
+        context.log.info(`RentPayments updated: ${updateResult.recordset[0].count} rows`);
         
         // If payment succeeded, add to PaymentHistory
         if (status === 'succeeded') {
@@ -47,27 +65,37 @@ module.exports = async function (context, req) {
             
             if (paymentResult.recordset.length > 0) {
                 const payment = paymentResult.recordset[0];
+                context.log.info(`Found payment record: ${JSON.stringify(payment)}`);
                 
-                // Add to payment history
-                await sql.query`
-                    INSERT INTO PaymentHistory (
-                        TenantId,
-                        Amount,
-                        PaymentDate,
-                        PaymentMethod,
-                        TransactionId,
-                        Status,
-                        RentPeriod
-                    ) VALUES (
-                        ${payment.TenantId},
-                        ${payment.Amount},
-                        ${payment.PaymentDate},
-                        'Credit Card',
-                        ${paymentIntentId},
-                        'Succeeded',
-                        DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
-                    )
-                `;
+                // Add to payment history with try/catch
+                try {
+                    const historyResult = await sql.query`
+                        INSERT INTO PaymentHistory (
+                            TenantId,
+                            Amount,
+                            PaymentDate,
+                            PaymentMethod,
+                            TransactionId,
+                            Status,
+                            RentPeriod
+                        ) 
+                        OUTPUT INSERTED.*
+                        VALUES (
+                            ${payment.TenantId},
+                            ${payment.Amount},
+                            ${payment.PaymentDate},
+                            'Credit Card',
+                            ${paymentIntentId},
+                            'Succeeded',
+                            DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+                        )
+                    `;
+                    context.log.info(`Payment history created: ${JSON.stringify(historyResult.recordset[0])}`);
+                } catch (historyError) {
+                    context.log.error('Error creating payment history:', historyError);
+                }
+            } else {
+                context.log.warn(`No payment record found for: ${paymentIntentId}`);
             }
         }
         

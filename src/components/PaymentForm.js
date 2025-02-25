@@ -66,14 +66,16 @@ const PaymentForm = () => {
         setError(null);
         
         try {
-            // Create payment intent
+            // Use the original ProcessPayment endpoint that was working before
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     amount: amount,
                     renterName: `${userData.firstName} ${userData.lastName}`,
-                    rentLocation: userData.propertyName
+                    rentLocation: userData.propertyName,
+                    // Add any other fields expected by the original function
+                    zipCode: '' // Add this if needed by the original function
                 })
             });
             
@@ -100,8 +102,6 @@ const PaymentForm = () => {
                 clientSecret: data.clientSecret,
             });
             
-            // This point is only reached if there's an immediate error
-            // If the payment requires confirmation, the user will be redirected
             if (error) {
                 throw new Error(error.message);
             }

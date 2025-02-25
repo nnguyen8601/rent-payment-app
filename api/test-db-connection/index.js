@@ -1,43 +1,62 @@
 import sql from 'mssql';
 
-export default async function handler(req, res) {
-  console.log('Testing database connection');
-  
-  const requiredEnvVars = ['SQL_SERVER', 'SQL_DATABASE', 'SQL_USER', 'SQL_PASSWORD'];
-  const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
-  
-  if (missingEnvVars.length > 0) {
-    return res.status(500).json({
-      error: 'Missing environment variables',
-      missing: missingEnvVars
-    });
-  }
-
-  let pool;
-  try {
-    const config = {
-      user: process.env.SQL_USER,
-      password: process.env.SQL_PASSWORD,
-      database: process.env.SQL_DATABASE,
-      server: process.env.SQL_SERVER,
-      options: {
+const config = {
+    server: process.env.SQL_SERVER,
+    database: process.env.SQL_DATABASE,
+    user: process.env.SQL_USER,
+    password: process.env.SQL_PASSWORD,
+    options: {
         encrypt: true
-      }
-    };
+    }
+};
 
-    pool = await sql.connect(config);
-    const result = await sql.query`SELECT 1 as test`;
-    
-    return res.status(200).json({
-      message: 'Database connection successful',
-      test: result.recordset[0]
-    });
-  } catch (error) {
-    return res.status(500).json({
-      error: 'Database connection failed',
-      details: error.message
-    });
-  } finally {
-    if (pool) await pool.close();
-  }
-} 
+module.exports = async function (context, req) {
+    let connection;
+    try {
+        context.log.info('Testing database connection');
+        connection = await sql.connect(config);
+        
+        // Test query - check tables
+        const tablesResult = await sql.query`
+            SELECT TABLE_NAME 
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_TYPE = 'BASE TABLE'
+            ORDER BY TABLE_NAME
+        `;
+
+        // Test query - check RentPayments permissions
+        const insertTest = await sql.query`
+            BEGIN TRANSACTION
+            DECLARE @TestId INT
+            INSERT INTO RentPayments (TenantId, Amount, PaymentDate, StripePaymentId, Status)
+            VALUES (1, 0.01, GETDATE(), 'test_' + CONVERT(VARCHAR, NEWID()), 'test')
+            SET @TestId = SCOPE_IDENTITY()
+            DELETE FROM RentPayments WHERE PaymentId = @TestId
+            ROLLBACK TRANSACTION
+            SELECT 'Success' AS Result
+        `;
+        
+        context.res = {
+            status: 200,
+            body: {
+                message: 'Database connection successful',
+                tables: tablesResult.recordset.map(r => r.TABLE_NAME),
+                insertTest: insertTest.recordset
+            }
+        };
+    } catch (error) {
+        context.log.error('Database test error:', error);
+        context.res = {
+            status: 500,
+            body: {
+                error: 'Database connection failed',
+                details: error.message,
+                stack: error.stack
+            }
+        };
+    } finally {
+        if (connection) {
+            await sql.close();
+        }
+    }
+}; 

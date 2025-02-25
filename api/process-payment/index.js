@@ -38,6 +38,27 @@ module.exports = async function (context, req) {
             return;
         }
 
+        // Get user from auth token
+        const authData = req.headers['x-ms-client-principal'];
+        if (!authData) {
+            context.res = {
+                status: 401,
+                body: { error: 'Authentication required' }
+            };
+            return;
+        }
+
+        const buff = Buffer.from(authData, 'base64');
+        const clientPrincipal = JSON.parse(buff.toString('ascii'));
+
+        // Check multiple possible claim types for email
+        const emailClaim = clientPrincipal.claims?.find(
+            claim => claim.typ === 'emails'
+        );
+
+        const userEmail = emailClaim ? emailClaim.val : clientPrincipal.userDetails;
+        context.log.info('User authenticated:', userEmail);
+
         // Create a PaymentIntent with the amount
         const paymentIntent = await stripe.paymentIntents.create({
             amount: Math.round(parseFloat(amount) * 100), // Convert to cents
@@ -51,28 +72,6 @@ module.exports = async function (context, req) {
             }
         });
 
-        // Get user from auth token
-        const authData = req.headers['x-ms-client-principal'];
-        let userEmail = '';
-        
-        if (authData) {
-            const buff = Buffer.from(authData, 'base64');
-            const clientPrincipal = JSON.parse(buff.toString('ascii'));
-            
-            // Log all claims to see what's available
-            context.log.info('All claims:', JSON.stringify(clientPrincipal.claims));
-
-            // Check multiple possible claim types for email
-            const emailClaim = clientPrincipal.claims?.find(
-                claim => claim.typ === 'Email Addresses' || 
-                       claim.typ === 'emails' || 
-                       claim.typ === 'email'
-            );
-
-            userEmail = emailClaim ? emailClaim.val : clientPrincipal.userDetails;
-            context.log.info('Using email:', userEmail);
-        }
-
         // Store payment intent in database
         if (userEmail) {
             connection = await sql.connect(config);
@@ -84,24 +83,35 @@ module.exports = async function (context, req) {
 
             if (tenantResult.recordset.length > 0) {
                 const tenantId = tenantResult.recordset[0].TenantId;
+                context.log.info(`Found tenant ID: ${tenantId} for email: ${userEmail}`);
                 
                 // Insert payment record
-                await sql.query`
-                    INSERT INTO RentPayments (
-                        TenantId,
-                        Amount,
-                        PaymentDate,
-                        StripePaymentId,
-                        Status
-                    )
-                    VALUES (
-                        ${tenantId},
-                        ${parseFloat(amount)},
-                        GETDATE(),
-                        ${paymentIntent.id},
-                        'pending'
-                    )
-                `;
+                try {
+                    const insertResult = await sql.query`
+                        INSERT INTO RentPayments (
+                            TenantId,
+                            Amount,
+                            PaymentDate,
+                            StripePaymentId,
+                            Status
+                        )
+                        OUTPUT INSERTED.*
+                        VALUES (
+                            ${tenantId},
+                            ${parseFloat(amount)},
+                            GETDATE(),
+                            ${paymentIntent.id},
+                            'pending'
+                        )
+                    `;
+                    
+                    context.log.info(`Payment record created: ${JSON.stringify(insertResult.recordset[0])}`);
+                } catch (insertError) {
+                    context.log.error('Error inserting payment record:', insertError);
+                    // Continue processing, don't throw error
+                }
+            } else {
+                context.log.warn(`No tenant found for email: ${userEmail}`);
             }
         }
 
