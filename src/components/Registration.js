@@ -47,7 +47,15 @@ const Registration = () => {
       // Get user email from B2C token
       const authResponse = await fetch('/.auth/me');
       const authData = await authResponse.json();
-      const email = authData.clientPrincipal.userDetails;
+      console.log('Auth data:', authData); // For debugging
+
+      // Try to get email from claims
+      const emailClaim = authData.clientPrincipal.claims.find(
+        claim => claim.typ === 'emails' || claim.typ === 'email'
+      );
+
+      const email = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+      console.log('Using email:', email);
 
       // Save user data
       const response = await fetch('/api/save-user-data', {

@@ -58,7 +58,14 @@ module.exports = async function (context, req) {
         if (authData) {
             const buff = Buffer.from(authData, 'base64');
             const clientPrincipal = JSON.parse(buff.toString('ascii'));
-            userEmail = clientPrincipal.userDetails;
+            
+            // Try to get email from claims
+            const emailClaim = clientPrincipal.claims?.find(
+                claim => claim.typ === 'emails' || claim.typ === 'email'
+            );
+            
+            userEmail = emailClaim ? emailClaim.val : clientPrincipal.userDetails;
+            context.log.info('Using email:', userEmail);
         }
 
         // Store payment intent in database

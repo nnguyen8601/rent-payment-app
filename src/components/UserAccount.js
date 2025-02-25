@@ -20,7 +20,15 @@ const UserAccount = () => {
         }
 
         setUserInfo(authData.clientPrincipal);
-        const userEmail = authData.clientPrincipal.userDetails;
+        console.log('Auth data:', authData.clientPrincipal); // For debugging
+
+        // Try to get email from claims
+        const emailClaim = authData.clientPrincipal.claims?.find(
+          claim => claim.typ === 'emails' || claim.typ === 'email'
+        );
+
+        const userEmail = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+        console.log('Using email:', userEmail);
         
         // Get user data from database
         const response = await fetch(`/api/get-user-data?email=${encodeURIComponent(userEmail)}`);
