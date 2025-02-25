@@ -1,207 +1,154 @@
 // filepath: rent-payment-app/rent-payment-app/src/components/PaymentForm.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
+import { useNavigate } from 'react-router-dom';
 import '../styles/PaymentForm.css';
 
 const PaymentForm = () => {
-    // Rental properties data
-    const rentalProperties = [
-        { id: 1, address: 'CILA 1' },
-        { id: 2, address: 'CILA 2' },
-        { id: 3, address: 'CILA 3' },
-        { id: 4, address: 'CILA 4' },
-        { id: 5, address: 'CILA 5' },
-        { id: 6, address: 'CILA 6' },
-        { id: 7, address: 'CILA 7' },
-        { id: 8, address: 'CILA 8' }
-        // Add more properties as needed
-    ];
-
-    // Get Stripe hooks
     const stripe = useStripe();
     const elements = useElements();
+    const navigate = useNavigate();
+    
+    const [userData, setUserData] = useState(null);
+    const [amount, setAmount] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [processing, setProcessing] = useState(false);
+    const [error, setError] = useState(null);
+    
+    useEffect(() => {
+        async function loadUserData() {
+            try {
+                // Get auth data from B2C
+                const authResponse = await fetch('/.auth/me');
+                const authData = await authResponse.json();
+                
+                if (!authData.clientPrincipal) {
+                    throw new Error('Not authenticated');
+                }
 
-    // Form state
-    const [formData, setFormData] = useState({
-        renterName: '',
-        rentLocation: '',
-        amount: '',
-        zipCode: '',
-    });
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [paymentStatus, setPaymentStatus] = useState(null);
+                // Extract email from claims
+                const emailClaim = authData.clientPrincipal.claims.find(
+                    claim => claim.typ === 'emails' || 
+                           claim.typ === 'email' || 
+                           claim.typ.includes('emailaddress')
+                );
+                
+                const email = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+                
+                // Get user data
+                const response = await fetch(`/api/get-user-data?email=${encodeURIComponent(email)}`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user data');
+                }
+                
+                const data = await response.json();
+                setUserData(data);
+            } catch (err) {
+                console.error('Error:', err);
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        loadUserData();
+    }, []);
 
-    // Handle form input changes
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prevState => ({
-            ...prevState,
-            [name]: value
-        }));
-    };
-
-    // Handle form submission
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        if (!stripe || !elements) {
+        
+        if (!stripe || !elements || processing) {
             return;
         }
-
-        setIsProcessing(true);
-        setPaymentStatus(null);
-
+        
+        setProcessing(true);
+        setError(null);
+        
         try {
-            // First, create payment intent and get clientSecret
+            // Create payment intent
             const response = await fetch('/api/process-payment', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    amount: formData.amount,
-                    renterName: formData.renterName,
-                    rentLocation: formData.rentLocation,
-                    zipCode: formData.zipCode
+                    amount: amount,
+                    renterName: `${userData.firstName} ${userData.lastName}`,
+                    rentLocation: userData.propertyName
                 })
             });
-
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || 'Payment processing failed');
+            }
+            
             const data = await response.json();
             
-            if (data.error) {
-                throw new Error(data.error);
-            }
-
-            // Submit the form before confirming payment
+            // Handle form submission
             const { error: submitError } = await elements.submit();
             if (submitError) {
                 throw new Error(submitError.message);
             }
-
-            // Use the clientSecret to confirm payment
+            
+            // Confirm payment
             const { error, paymentIntent } = await stripe.confirmPayment({
                 elements,
                 clientSecret: data.clientSecret,
                 confirmParams: {
                     return_url: `${window.location.origin}/payment-complete`,
-                    payment_method_data: {
-                        billing_details: {
-                            name: formData.renterName
-                        }
-                    }
                 }
             });
-
+            
             if (error) {
                 throw new Error(error.message);
             }
-
-            if (paymentIntent.status === 'succeeded') {
-                // Update payment status in database
-                await fetch('/api/update-payment-status', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        paymentIntentId: paymentIntent.id,
-                        status: paymentIntent.status
-                    })
-                });
-
-                setPaymentStatus({
-                    type: 'success',
-                    message: 'Payment processed successfully!'
-                });
-                // Clear form
-                setFormData({
-                    renterName: '',
-                    rentLocation: '',
-                    amount: '',
-                    zipCode: '',
-                });
-            }
-        } catch (error) {
-            setPaymentStatus({
-                type: 'error',
-                message: `Payment failed: ${error.message}`
-            });
-        } finally {
-            setIsProcessing(false);
+            
+        } catch (err) {
+            console.error('Payment error:', err);
+            setError(err.message);
+            setProcessing(false);
         }
     };
+    
+    if (loading) return <div className="loading">Loading payment information...</div>;
+    if (error) return <div className="error">Error: {error}</div>;
+    if (!userData) return null;
 
     return (
-        <div className="payment-form-container">
-            <form onSubmit={handleSubmit} className="payment-form">
-                {/* Renter details */}
+        <div className="payment-container">
+            <h1>Make a Payment</h1>
+            
+            <div className="user-details">
+                <p><strong>Name:</strong> {userData.firstName} {userData.lastName}</p>
+                <p><strong>Email:</strong> {userData.email}</p>
+                <p><strong>Property:</strong> {userData.propertyName}</p>
+            </div>
+            
+            <form onSubmit={handleSubmit}>
                 <div className="form-group">
-                    <label htmlFor="renterName">Renter's Name</label>
-                    <input
-                        type="text"
-                        id="renterName"
-                        name="renterName"
-                        value={formData.renterName}
-                        onChange={handleChange}
-                        required
-                    />
-                </div>
-
-                {/* Property selection */}
-                <div className="form-group">
-                    <label htmlFor="rentLocation">Rental Property</label>
-                    <select
-                        id="rentLocation"
-                        name="rentLocation"
-                        value={formData.rentLocation}
-                        onChange={handleChange}
-                        required
-                        className="select-input"
-                    >
-                        <option value="">Select a property</option>
-                        {rentalProperties.map(property => (
-                            <option key={property.id} value={property.address}>
-                                {property.address}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-
-                {/* Amount */}
-                <div className="form-group">
-                    <label htmlFor="amount">Payment Amount ($)</label>
+                    <label>Payment Amount ($)</label>
                     <input
                         type="number"
-                        id="amount"
-                        name="amount"
-                        value={formData.amount}
-                        onChange={handleChange}
-                        min="0"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="Enter amount"
+                        min="1"
                         step="0.01"
                         required
                     />
                 </div>
-
-                {/* Stripe Payment Element */}
+                
                 <div className="form-group">
                     <label>Payment Details</label>
                     <PaymentElement />
                 </div>
-
-                {/* Status message */}
-                {paymentStatus && (
-                    <div className={`status-message ${paymentStatus.type}`}>
-                        {paymentStatus.message}
-                    </div>
-                )}
-
-                {/* Submit button */}
+                
                 <button 
-                    type="submit" 
+                    type="submit"
+                    disabled={!stripe || processing || !amount}
                     className="submit-button"
-                    disabled={isProcessing || !stripe}
                 >
-                    {isProcessing ? 'Processing...' : 'Submit Payment'}
+                    {processing ? 'Processing...' : 'Submit Payment'}
                 </button>
             </form>
         </div>

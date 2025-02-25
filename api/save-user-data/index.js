@@ -13,14 +13,6 @@ const config = {
 module.exports = async function (context, req) {
     let connection;
     try {
-        if (req.method !== 'POST') {
-            context.res = {
-                status: 405,
-                body: { error: 'Method not allowed' }
-            };
-            return;
-        }
-
         const { email, firstName, lastName, propertyId } = req.body;
 
         if (!email || !firstName || !lastName || !propertyId) {
@@ -31,37 +23,47 @@ module.exports = async function (context, req) {
             return;
         }
 
+        context.log.info(`Saving user data for email: ${email}`);
+        
         connection = await sql.connect(config);
-
+        
         // Check if user already exists
-        const existingUser = await sql.query`
+        const checkResult = await sql.query`
             SELECT TenantId FROM Tenants WHERE Email = ${email}
         `;
-
-        if (existingUser.recordset.length > 0) {
+        
+        if (checkResult.recordset.length > 0) {
             context.res = {
                 status: 409,
                 body: { error: 'User already exists' }
             };
             return;
         }
-
+        
         // Insert new tenant
         const result = await sql.query`
             INSERT INTO Tenants (Email, FirstName, LastName, PropertyId)
             OUTPUT INSERTED.*
             VALUES (${email}, ${firstName}, ${lastName}, ${propertyId})
         `;
-
+        
         context.res = {
             status: 201,
-            body: result.recordset[0]
+            body: {
+                message: 'User registered successfully',
+                user: {
+                    tenantId: result.recordset[0].TenantId,
+                    email,
+                    firstName,
+                    lastName
+                }
+            }
         };
     } catch (error) {
         context.log.error('Database error:', error);
         context.res = {
             status: 500,
-            body: { error: 'Failed to save user data' }
+            body: { error: 'Failed to save user data', details: error.message }
         };
     } finally {
         if (connection) {

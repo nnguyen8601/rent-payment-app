@@ -23,14 +23,16 @@ module.exports = async function (context, req) {
             return;
         }
 
+        context.log.info(`Fetching user data for email: ${email}`);
+        
         connection = await sql.connect(config);
         
         const result = await sql.query`
             SELECT 
-                t.FirstName,
-                t.LastName,
-                t.Email,
-                p.PropertyName,
+                t.FirstName as firstName,
+                t.LastName as lastName,
+                t.Email as email,
+                p.PropertyName as propertyName,
                 CASE 
                     WHEN EXISTS (
                         SELECT 1 FROM PaymentHistory ph 
@@ -46,6 +48,7 @@ module.exports = async function (context, req) {
         `;
 
         if (!result.recordset || result.recordset.length === 0) {
+            context.log.warn(`No user found for email: ${email}`);
             context.res = {
                 status: 404,
                 body: { error: 'User not found' }
@@ -61,7 +64,7 @@ module.exports = async function (context, req) {
         context.log.error('Database error:', error);
         context.res = {
             status: 500,
-            body: { error: 'Failed to fetch user data' }
+            body: { error: 'Failed to fetch user data', details: error.message }
         };
     } finally {
         if (connection) {

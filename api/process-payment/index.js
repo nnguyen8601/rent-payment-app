@@ -59,11 +59,16 @@ module.exports = async function (context, req) {
             const buff = Buffer.from(authData, 'base64');
             const clientPrincipal = JSON.parse(buff.toString('ascii'));
             
-            // Try to get email from claims
+            // Log all claims to see what's available
+            context.log.info('All claims:', JSON.stringify(clientPrincipal.claims));
+
+            // Check multiple possible claim types for email
             const emailClaim = clientPrincipal.claims?.find(
-                claim => claim.typ === 'emails' || claim.typ === 'email'
+                claim => claim.typ === 'Email Addresses' || 
+                       claim.typ === 'emails' || 
+                       claim.typ === 'email'
             );
-            
+
             userEmail = emailClaim ? emailClaim.val : clientPrincipal.userDetails;
             context.log.info('Using email:', userEmail);
         }

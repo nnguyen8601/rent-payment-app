@@ -3,143 +3,166 @@ import { useNavigate } from 'react-router-dom';
 
 const Registration = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const [userInfo, setUserInfo] = useState({
+    email: '',
     firstName: '',
-    lastName: '',
-    propertyId: ''
+    lastName: ''
   });
   const [properties, setProperties] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch properties from API
-    fetch('/api/get-properties')
-      .then(response => {
-        if (!response.ok) throw new Error('Failed to fetch properties');
-        return response.json();
-      })
-      .then(data => {
-        setProperties(data);
-      })
-      .catch(err => {
-        console.error('Error fetching properties:', err);
-        // Fallback to hardcoded properties in case of API error
-        setProperties([
-          { id: 1, name: 'CILA 1' },
-          { id: 2, name: 'CILA 2' },
-          { id: 3, name: 'CILA 3' },
-          { id: 4, name: 'CILA 4' },
-          { id: 5, name: 'CILA 5' },
-          { id: 6, name: 'CILA 6' },
-          { id: 7, name: 'CILA 7' },
-          { id: 8, name: 'CILA 8' }
-        ]);
-      });
+    async function initialize() {
+      try {
+        // Get user info from B2C
+        const authResponse = await fetch('/.auth/me');
+        const authData = await authResponse.json();
+        
+        if (!authData.clientPrincipal) {
+          throw new Error('Not authenticated');
+        }
+        
+        // Extract name claims
+        const firstNameClaim = authData.clientPrincipal.claims.find(
+          claim => claim.typ === 'FirstName' || 
+                 claim.typ.includes('givenname')
+        );
+        
+        const lastNameClaim = authData.clientPrincipal.claims.find(
+          claim => claim.typ === 'LastName' || 
+                 claim.typ.includes('surname')
+        );
+        
+        const emailClaim = authData.clientPrincipal.claims.find(
+          claim => claim.typ === 'Email Addresses' || 
+                 claim.typ === 'emails' || 
+                 claim.typ === 'email'
+        );
+        
+        setUserInfo({
+          firstName: firstNameClaim ? firstNameClaim.val : '',
+          lastName: lastNameClaim ? lastNameClaim.val : '',
+          email: emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails
+        });
+        
+        // Fetch properties list
+        const propertiesResponse = await fetch('/api/get-properties');
+        if (!propertiesResponse.ok) {
+          throw new Error('Failed to load properties');
+        }
+        
+        const propertiesData = await propertiesResponse.json();
+        setProperties(propertiesData);
+      } catch (err) {
+        console.error('Error:', err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    initialize();
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setError(null);
-
+    
     try {
-      // Get user email from B2C token
-      const authResponse = await fetch('/.auth/me');
-      const authData = await authResponse.json();
-      console.log('Auth data:', authData); // For debugging
-
-      // Try to get email from claims
-      const emailClaim = authData.clientPrincipal.claims.find(
-        claim => claim.typ === 'emails' || claim.typ === 'email'
-      );
-
-      const email = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
-      console.log('Using email:', email);
-
-      // Save user data
       const response = await fetch('/api/save-user-data', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          email
-        }),
+          email: userInfo.email,
+          firstName: userInfo.firstName,
+          lastName: userInfo.lastName,
+          propertyId: selectedProperty
+        })
       });
-
+      
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Registration failed');
       }
-
+      
       // Redirect to user account page
       navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+  
+  if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div style={{ maxWidth: '600px', margin: '40px auto', padding: '20px' }}>
-      <h2>Complete Your Profile</h2>
+    <div className="registration-container">
+      <h1>Complete Your Registration</h1>
+      
       <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '15px' }}>
+        <div className="form-group">
           <label>First Name</label>
-          <input
+          <input 
             type="text"
-            value={formData.firstName}
-            onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+            value={userInfo.firstName}
+            onChange={(e) => setUserInfo({...userInfo, firstName: e.target.value})}
+            disabled={true}
             required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
-
-        <div style={{ marginBottom: '15px' }}>
+        
+        <div className="form-group">
           <label>Last Name</label>
-          <input
+          <input 
             type="text"
-            value={formData.lastName}
-            onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+            value={userInfo.lastName}
+            onChange={(e) => setUserInfo({...userInfo, lastName: e.target.value})}
+            disabled={true}
             required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
           />
         </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <label>Property</label>
-          <select
-            value={formData.propertyId}
-            onChange={(e) => setFormData({...formData, propertyId: e.target.value})}
+        
+        <div className="form-group">
+          <label>Email</label>
+          <input 
+            type="email"
+            value={userInfo.email}
+            onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
+            disabled={true}
             required
-            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
+          />
+        </div>
+        
+        <div className="form-group">
+          <label>Select Your Property</label>
+          <select
+            value={selectedProperty}
+            onChange={(e) => setSelectedProperty(e.target.value)}
+            required
           >
-            <option value="">Select a property</option>
-            {properties.map(prop => (
-              <option key={prop.id} value={prop.id}>{prop.name}</option>
+            <option value="">-- Select a property --</option>
+            {properties.map(property => (
+              <option key={property.id} value={property.id}>
+                {property.name}
+              </option>
             ))}
           </select>
         </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            backgroundColor: '#007bff',
-            color: 'white',
-            padding: '10px 20px',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: loading ? 'not-allowed' : 'pointer'
-          }}
+        
+        {error && <div className="error-message">{error}</div>}
+        
+        <button 
+          type="submit" 
+          disabled={submitting || !selectedProperty}
+          className="submit-button"
         >
-          {loading ? 'Submitting...' : 'Complete Registration'}
+          {submitting ? 'Submitting...' : 'Complete Registration'}
         </button>
-
-        {error && (
-          <div style={{ color: 'red', marginTop: '10px' }}>{error}</div>
-        )}
       </form>
     </div>
   );
