@@ -13,12 +13,29 @@ const Registration = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Fetch properties list
-    setProperties([
-      { id: 1, name: 'CILA 1' },
-      { id: 2, name: 'CILA 2' },
-      { id: 3, name: 'CILA 3' }
-    ]);
+    // Fetch properties from API
+    fetch('/api/get-properties')
+      .then(response => {
+        if (!response.ok) throw new Error('Failed to fetch properties');
+        return response.json();
+      })
+      .then(data => {
+        setProperties(data);
+      })
+      .catch(err => {
+        console.error('Error fetching properties:', err);
+        // Fallback to hardcoded properties in case of API error
+        setProperties([
+          { id: 1, name: 'CILA 1' },
+          { id: 2, name: 'CILA 2' },
+          { id: 3, name: 'CILA 3' },
+          { id: 4, name: 'CILA 4' },
+          { id: 5, name: 'CILA 5' },
+          { id: 6, name: 'CILA 6' },
+          { id: 7, name: 'CILA 7' },
+          { id: 8, name: 'CILA 8' }
+        ]);
+      });
   }, []);
 
   const handleSubmit = async (e) => {
