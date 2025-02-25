@@ -13,6 +13,7 @@ const Registration = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [claimsDebug, setClaimsDebug] = useState('');
 
   useEffect(() => {
     async function initialize() {
@@ -20,9 +21,15 @@ const Registration = () => {
         // Get user info from B2C
         const authResponse = await fetch('/.auth/me');
         const authData = await authResponse.json();
+        console.log('Full auth data:', authData);
         
         if (!authData.clientPrincipal) {
           throw new Error('Not authenticated');
+        }
+        
+        // Debug claims
+        if (authData.clientPrincipal?.claims) {
+          setClaimsDebug(JSON.stringify(authData.clientPrincipal.claims, null, 2));
         }
         
         // Extract name claims
@@ -69,6 +76,12 @@ const Registration = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!userInfo.firstName || !userInfo.lastName || !userInfo.email || !selectedProperty) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    
     setSubmitting(true);
     setError(null);
     
@@ -101,48 +114,49 @@ const Registration = () => {
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
-    <div className="registration-container">
-      <h1>Complete Your Registration</h1>
+    <div className="registration-container" style={{ maxWidth: '600px', margin: '40px auto', padding: '20px' }}>
+      <h1 style={{ marginBottom: '20px' }}>Complete Your Registration</h1>
       
       <form onSubmit={handleSubmit}>
-        <div className="form-group">
+        <div style={{ marginBottom: '15px' }}>
           <label>First Name</label>
           <input 
             type="text"
             value={userInfo.firstName}
             onChange={(e) => setUserInfo({...userInfo, firstName: e.target.value})}
-            disabled={true}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             required
           />
         </div>
         
-        <div className="form-group">
+        <div style={{ marginBottom: '15px' }}>
           <label>Last Name</label>
           <input 
             type="text"
             value={userInfo.lastName}
             onChange={(e) => setUserInfo({...userInfo, lastName: e.target.value})}
-            disabled={true}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             required
           />
         </div>
         
-        <div className="form-group">
+        <div style={{ marginBottom: '15px' }}>
           <label>Email</label>
           <input 
             type="email"
             value={userInfo.email}
             onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
-            disabled={true}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             required
           />
         </div>
         
-        <div className="form-group">
+        <div style={{ marginBottom: '15px' }}>
           <label>Select Your Property</label>
           <select
             value={selectedProperty}
             onChange={(e) => setSelectedProperty(e.target.value)}
+            style={{ width: '100%', padding: '8px', marginTop: '5px' }}
             required
           >
             <option value="">-- Select a property --</option>
@@ -154,16 +168,30 @@ const Registration = () => {
           </select>
         </div>
         
-        {error && <div className="error-message">{error}</div>}
+        {error && <div style={{ color: 'red', marginBottom: '15px' }}>{error}</div>}
         
         <button 
           type="submit" 
-          disabled={submitting || !selectedProperty}
-          className="submit-button"
+          disabled={submitting}
+          style={{
+            backgroundColor: '#007bff',
+            color: 'white',
+            padding: '10px 20px',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: submitting ? 'not-allowed' : 'pointer'
+          }}
         >
           {submitting ? 'Submitting...' : 'Complete Registration'}
         </button>
       </form>
+      
+      {claimsDebug && (
+        <div style={{ marginTop: '30px', padding: '15px', background: '#f5f5f5', borderRadius: '4px' }}>
+          <h3>Debug: Available Claims</h3>
+          <pre style={{ whiteSpace: 'pre-wrap', overflow: 'auto' }}>{claimsDebug}</pre>
+        </div>
+      )}
     </div>
   );
 };
