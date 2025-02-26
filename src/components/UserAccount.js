@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Loading from './shared/Loading';
+import Error from './shared/Error';
+import { colors, containerStyles } from '../styles/shared';
 
 const UserAccount = () => {
   const navigate = useNavigate();
@@ -67,41 +70,58 @@ const UserAccount = () => {
     loadUserData();
   }, [navigate]);
   
-  if (loading) return <div className="loading">Loading your account information...</div>;
-  if (error) return <div className="error">Error: {error}</div>;
+  if (loading) return <Loading message="Loading your account information..." />;
+  if (error) return <Error message={error} />;
   if (!userData) return null;
 
   return (
-    <div className="account-container">
-      <h1>Welcome, {userData.firstName} {userData.lastName}</h1>
-      
-      <div className="account-info">
-        <h2>Account Information</h2>
-        <p><strong>Email:</strong> {userData.email}</p>
-        <p><strong>Property:</strong> {userData.propertyName}</p>
-      </div>
+    <div className="page-container fade-in">
+      <div style={containerStyles}>
+        <h1 style={{ marginBottom: '24px', color: colors.dark }}>
+          Welcome, {userData.firstName} {userData.lastName}
+        </h1>
+        
+        <div className="card">
+          <h2 style={{ color: colors.gray, marginBottom: '16px' }}>
+            Account Information
+          </h2>
+          <p><strong>Email:</strong> {userData.email}</p>
+          <p><strong>Property:</strong> {userData.propertyName}</p>
+        </div>
 
-      <div className="payment-status">
-        <h2>Rent Payment Status</h2>
-        {userData.hasPaidCurrentMonth ? (
-          <div className="paid-status">
-            <span className="checkmark">✓</span>
-            <span>Rent paid for this month</span>
-          </div>
-        ) : (
-          <div className="unpaid-status">
-            <p className="warning">
-              <span className="warning-icon">⚠</span>
-              <span>Rent payment pending for this month</span>
-            </p>
-            <button 
-              onClick={() => navigate('/payment')}
-              className="pay-button"
-            >
-              Pay Now
-            </button>
-          </div>
-        )}
+        <div className="card">
+          <h2 style={{ color: colors.gray, marginBottom: '16px' }}>
+            Rent Payment Status
+          </h2>
+          {userData.hasPaidCurrentMonth ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              color: colors.success
+            }}>
+              <span style={{ fontSize: '24px', marginRight: '8px' }}>✓</span>
+              <span>Rent paid for this month</span>
+            </div>
+          ) : (
+            <div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                color: colors.warning,
+                marginBottom: '16px'
+              }}>
+                <span style={{ fontSize: '24px', marginRight: '8px' }}>⚠</span>
+                <span>Rent payment pending for this month</span>
+              </div>
+              <button 
+                className="btn btn-primary"
+                onClick={() => navigate('/payment')}
+              >
+                Pay Now
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
