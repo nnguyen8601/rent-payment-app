@@ -24,19 +24,50 @@ module.exports = async function (context, req) {
         }
 
         const { paymentIntentId, status, amount, tenantId } = req.body;
-
-        if (!paymentIntentId || !status) {
+        
+        // Add validation for required fields
+        if (!paymentIntentId || !status || !tenantId || !amount) {
             context.res = {
                 status: 400,
-                body: { error: 'Payment intent ID and status are required' }
+                body: { 
+                    error: 'Missing required fields',
+                    details: {
+                        paymentIntentId: !paymentIntentId ? 'missing' : 'present',
+                        status: !status ? 'missing' : 'present',
+                        tenantId: !tenantId ? 'missing' : 'present',
+                        amount: !amount ? 'missing' : 'present'
+                    }
+                }
             };
             return;
         }
 
-        context.log.info(`Payment update request received: ${JSON.stringify(req.body)}`);
-        context.log.info(`Processing payment status for: ${paymentIntentId} to ${status}`);
+        context.log.info(`Payment update request received: ${JSON.stringify({
+            paymentIntentId,
+            status,
+            amount,
+            tenantId
+        })}`);
         
         connection = await sql.connect(config);
+        
+        // First check if payment already exists for this month
+        const currentMonth = await sql.query`
+            SELECT COUNT(*) as count 
+            FROM RentPayments 
+            WHERE TenantId = ${tenantId}
+            AND MONTH(PaymentDate) = MONTH(GETDATE())
+            AND YEAR(PaymentDate) = YEAR(GETDATE())
+            AND Status = 'succeeded'
+        `;
+
+        if (currentMonth.recordset[0].count > 0) {
+            context.res = {
+                status: 400,
+                body: { error: 'Payment already exists for current month' }
+            };
+            return;
+        }
         
         // First check if the record exists
         const existingRecord = await sql.query`
@@ -47,8 +78,8 @@ module.exports = async function (context, req) {
 
         if (existingRecord.recordset[0].count === 0) {
             // No existing record, perform INSERT
-            context.log.info(`No existing record found for ${paymentIntentId}, creating new record`);
-            await sql.query`
+            context.log.info(`Creating new payment record - TenantId: ${tenantId}, Amount: ${amount}`);
+            const insertResult = await sql.query`
                 INSERT INTO RentPayments (
                     TenantId,
                     Amount,
@@ -56,6 +87,7 @@ module.exports = async function (context, req) {
                     Status,
                     StripePaymentId
                 )
+                OUTPUT INSERTED.*
                 VALUES (
                     ${tenantId},
                     ${amount},
@@ -64,12 +96,14 @@ module.exports = async function (context, req) {
                     ${paymentIntentId}
                 )
             `;
+            context.log.info(`Inserted payment record: ${JSON.stringify(insertResult.recordset[0])}`);
         } else {
             // Record exists, perform UPDATE
-            context.log.info(`Updating existing record for ${paymentIntentId}`);
+            context.log.info(`Updating existing record for ${paymentIntentId} - TenantId: ${tenantId}`);
             await sql.query`
                 UPDATE RentPayments
-                SET Status = ${status}
+                SET Status = ${status},
+                    TenantId = ${tenantId}
                 WHERE StripePaymentId = ${paymentIntentId}
             `;
         }
@@ -87,9 +121,8 @@ module.exports = async function (context, req) {
             
             if (paymentResult.recordset.length > 0) {
                 const payment = paymentResult.recordset[0];
-                context.log.info(`Found payment record: ${JSON.stringify(payment)}`);
+                context.log.info(`Found payment record for history: ${JSON.stringify(payment)}`);
                 
-                // Add to payment history with try/catch
                 try {
                     const historyResult = await sql.query`
                         INSERT INTO PaymentHistory (
@@ -103,9 +136,9 @@ module.exports = async function (context, req) {
                         ) 
                         OUTPUT INSERTED.*
                         VALUES (
-                            ${payment.TenantId},
-                            ${payment.Amount},
-                            ${payment.PaymentDate},
+                            ${tenantId},
+                            ${amount},
+                            GETDATE(),
                             'Credit Card',
                             ${paymentIntentId},
                             'Succeeded',
@@ -114,18 +147,22 @@ module.exports = async function (context, req) {
                     `;
                     context.log.info(`Payment history created: ${JSON.stringify(historyResult.recordset[0])}`);
                 } catch (historyError) {
-                    context.log.error('Error creating payment history:', historyError);
-                    throw historyError; // Re-throw to ensure transaction fails
+                    context.log.error(`Error creating payment history for TenantId ${tenantId}:`, historyError);
+                    throw historyError;
                 }
             }
         }
         
         context.res = {
             status: 200,
-            body: { message: 'Payment status updated successfully' }
+            body: { 
+                message: 'Payment status updated successfully',
+                tenantId: tenantId,
+                paymentDate: new Date().toISOString()
+            }
         };
     } catch (error) {
-        context.log.error('Error updating payment status:', error);
+        context.log.error(`Error updating payment status for TenantId ${req.body?.tenantId}:`, error);
         context.res = {
             status: 500,
             body: { error: 'Failed to update payment status', details: error.message }
