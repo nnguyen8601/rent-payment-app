@@ -28,112 +28,102 @@ const PaymentComplete = () => {
         // Retrieve payment intent details
         stripe.retrievePaymentIntent(clientSecret).then(({ paymentIntent }) => {
             console.log('Payment intent details:', paymentIntent);
-            console.log('Full payment intent:', JSON.stringify(paymentIntent));
             
-            // Update payment status in the database using the original working function
-            fetch('/api/update-payment-status', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    paymentIntentId: paymentIntent.id,
-                    status: paymentIntent.status,
-                    // Add any other fields expected by the original function
-                    amount: paymentIntent.amount / 100
-                }),
-            })
-            .then(response => response.text())
-            .then(text => {
-                try {
-                    const data = JSON.parse(text);
-                    console.log('Payment status update response:', data);
-                } catch (e) {
-                    console.log('Raw update response:', text);
-                }
-            })
-            .catch(err => {
-                console.error('Error updating payment status:', err);
-            });
-
-            // Set the UI based on the payment status
-            switch (paymentIntent.status) {
-                case "succeeded":
-                    setStatus({ 
-                        type: 'success', 
-                        message: 'Payment successful! Thank you for your payment.' 
-                    });
-                    setPaymentDetails({
-                        amount: (paymentIntent.amount / 100).toFixed(2),
-                        date: new Date().toLocaleDateString(),
-                        id: paymentIntent.id
-                    });
-                    break;
-                case "processing":
-                    setStatus({ 
-                        type: 'processing', 
-                        message: 'Your payment is processing.' 
-                    });
-                    break;
-                case "requires_payment_method":
-                    setStatus({ 
-                        type: 'error', 
-                        message: 'Your payment was not successful. Please try again.' 
-                    });
-                    break;
-                default:
-                    setStatus({ 
-                        type: 'error', 
-                        message: 'Something went wrong with your payment.' 
-                    });
-                    break;
-            }
-
-            // Get user email with proper async handling
-            const getUserEmail = async () => {
+            // First get the user's email and tenant ID
+            const getUserData = async () => {
                 try {
                     const authResponse = await fetch('/.auth/me');
                     const authData = await authResponse.json();
                     
                     if (!authData.clientPrincipal) {
-                        console.error('Not authenticated');
-                        return null;
+                        throw new Error('Not authenticated');
                     }
                     
                     const emailClaim = authData.clientPrincipal.claims.find(
                         claim => claim.typ === 'emails'
                     );
                     
-                    return emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+                    const email = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
+                    
+                    // Get tenant data using the email
+                    const userDataResponse = await fetch(`/api/get-user-data?email=${encodeURIComponent(email)}`);
+                    if (!userDataResponse.ok) {
+                        throw new Error('Failed to fetch user data');
+                    }
+                    
+                    const userData = await userDataResponse.json();
+                    return userData;
                 } catch (err) {
-                    console.error('Error getting user email:', err);
+                    console.error('Error getting user data:', err);
                     return null;
                 }
             };
 
-            // Call the async function and handle the result with promises
-            getUserEmail().then(email => {
-                console.log('User email for direct update:', email);
+            // Get user data and then update payment status
+            getUserData().then(userData => {
+                if (!userData) {
+                    console.error('Could not get user data for payment update');
+                    return;
+                }
 
-                if (email) {
-                    // Call direct payment update as a fallback
-                    fetch('/api/direct-payment-update', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            paymentIntentId: paymentIntent.id,
-                            email: email
-                        }),
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        console.log('Direct payment update response:', data);
-                    })
-                    .catch(err => {
-                        console.error('Error in direct payment update:', err);
-                    });
+                // Now we have the tenant ID, update payment status
+                fetch('/api/update-payment-status', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        paymentIntentId: paymentIntent.id,
+                        status: paymentIntent.status,
+                        amount: paymentIntent.amount / 100,
+                        tenantId: userData.tenantId  // Add the tenant ID here
+                    }),
+                })
+                .then(response => response.text())
+                .then(text => {
+                    try {
+                        const data = JSON.parse(text);
+                        console.log('Payment status update response:', data);
+                    } catch (e) {
+                        console.log('Raw update response:', text);
+                    }
+                })
+                .catch(err => {
+                    console.error('Error updating payment status:', err);
+                });
+
+                // Set the UI based on the payment status
+                switch (paymentIntent.status) {
+                    case "succeeded":
+                        setStatus({ 
+                            type: 'success', 
+                            message: 'Payment successful! Thank you for your payment.' 
+                        });
+                        setPaymentDetails({
+                            amount: (paymentIntent.amount / 100).toFixed(2),
+                            date: new Date().toLocaleDateString(),
+                            id: paymentIntent.id,
+                            property: userData.propertyName
+                        });
+                        break;
+                    case "processing":
+                        setStatus({ 
+                            type: 'processing', 
+                            message: 'Your payment is processing.' 
+                        });
+                        break;
+                    case "requires_payment_method":
+                        setStatus({ 
+                            type: 'error', 
+                            message: 'Your payment was not successful. Please try again.' 
+                        });
+                        break;
+                    default:
+                        setStatus({ 
+                            type: 'error', 
+                            message: 'Something went wrong with your payment.' 
+                        });
+                        break;
                 }
             });
         });
@@ -163,6 +153,7 @@ const PaymentComplete = () => {
                     <p><strong>Amount:</strong> ${paymentDetails.amount}</p>
                     <p><strong>Date:</strong> {paymentDetails.date}</p>
                     <p><strong>Transaction ID:</strong> {paymentDetails.id}</p>
+                    <p><strong>Property:</strong> {paymentDetails.property}</p>
                 </div>
             )}
             
