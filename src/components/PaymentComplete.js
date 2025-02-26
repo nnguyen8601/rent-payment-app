@@ -52,6 +52,7 @@ const PaymentComplete = () => {
                     }
                     
                     const userData = await userDataResponse.json();
+                    console.log('User data retrieved:', userData);
                     return userData;
                 } catch (err) {
                     console.error('Error getting user data:', err);
@@ -65,6 +66,7 @@ const PaymentComplete = () => {
                     console.error('Could not get user data for payment update');
                     return;
                 }
+                console.log('About to update payment status with userData:', userData);
 
                 // Now we have the tenant ID, update payment status
                 fetch('/api/update-payment-status', {
@@ -76,7 +78,7 @@ const PaymentComplete = () => {
                         paymentIntentId: paymentIntent.id,
                         status: paymentIntent.status,
                         amount: paymentIntent.amount / 100,
-                        tenantId: userData.tenantId  // Add the tenant ID here
+                        tenantId: userData.tenantId  // Make sure this exists
                     }),
                 })
                 .then(response => response.text())
