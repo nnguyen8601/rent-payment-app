@@ -2,7 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
 import { useNavigate } from 'react-router-dom';
-import '../styles/PaymentForm.css';
+import { colors, containerStyles, spacing } from '../styles/shared';
+import Loading from './shared/Loading';
+import Error from './shared/Error';
 
 const PaymentForm = () => {
     const stripe = useStripe();
@@ -112,47 +114,60 @@ const PaymentForm = () => {
         }
     };
     
-    if (loading) return <div className="loading">Loading payment information...</div>;
-    if (error) return <div className="error">Error: {error}</div>;
+    if (loading) return <Loading message="Loading payment information..." />;
+    if (error) return <Error message={error} />;
     if (!userData) return null;
 
     return (
-        <div className="payment-container">
-            <h1>Make a Payment</h1>
-            
-            <div className="user-details">
-                <p><strong>Name:</strong> {userData.firstName} {userData.lastName}</p>
-                <p><strong>Email:</strong> {userData.email}</p>
-                <p><strong>Property:</strong> {userData.propertyName}</p>
+        <div className="page-container fade-in">
+            <div style={containerStyles}>
+                <h1 style={{ color: colors.dark, marginBottom: spacing.xl }}>
+                    Make a Payment
+                </h1>
+
+                <div className="card" style={{ marginBottom: spacing.lg }}>
+                    <h2 style={{ color: colors.gray, marginBottom: spacing.md }}>
+                        Account Information
+                    </h2>
+                    <div style={{ marginBottom: spacing.md }}>
+                        <p><strong>Name:</strong> {userData.firstName} {userData.lastName}</p>
+                        <p><strong>Email:</strong> {userData.email}</p>
+                        <p><strong>Property:</strong> {userData.propertyName}</p>
+                    </div>
+                </div>
+
+                <div className="card">
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label style={{ color: colors.dark }}>Payment Amount ($)</label>
+                            <input
+                                type="number"
+                                value={amount}
+                                onChange={(e) => setAmount(e.target.value)}
+                                placeholder="Enter amount"
+                                min="1"
+                                step="0.01"
+                                required
+                                className="form-control"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label style={{ color: colors.dark }}>Payment Details</label>
+                            <PaymentElement />
+                        </div>
+
+                        <button 
+                            type="submit"
+                            disabled={!stripe || processing || !amount}
+                            className="btn btn-primary"
+                            style={{ width: '100%', marginTop: spacing.lg }}
+                        >
+                            {processing ? 'Processing...' : 'Submit Payment'}
+                        </button>
+                    </form>
+                </div>
             </div>
-            
-            <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                    <label>Payment Amount ($)</label>
-                    <input
-                        type="number"
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        placeholder="Enter amount"
-                        min="1"
-                        step="0.01"
-                        required
-                    />
-                </div>
-                
-                <div className="form-group">
-                    <label>Payment Details</label>
-                    <PaymentElement />
-                </div>
-                
-                <button 
-                    type="submit"
-                    disabled={!stripe || processing || !amount}
-                    className="submit-button"
-                >
-                    {processing ? 'Processing...' : 'Submit Payment'}
-                </button>
-            </form>
         </div>
     );
 };

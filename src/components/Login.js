@@ -1,4 +1,5 @@
 import React from 'react';
+import { colors, containerStyles, buttonStyles } from '../styles/shared';
 
 const Login = () => {
   const handleLogin = () => {
@@ -6,30 +7,37 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container" style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      minHeight: '100vh',
-      padding: '20px',
-      backgroundColor: '#f8f9fa'
-    }}>
-      <h1 style={{ marginBottom: '20px' }}>Welcome to Rent Payment</h1>
-      <button
-        onClick={handleLogin}
-        style={{
-          padding: '12px 24px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '16px'
-        }}
-      >
-        Login with Azure AD B2C
-      </button>
+    <div className="page-container fade-in">
+      <div style={{
+        ...containerStyles,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '60vh',
+      }}>
+        <h1 style={{ color: colors.dark, marginBottom: spacing.xl }}>
+          Welcome to Rent Payment Portal
+        </h1>
+        
+        <div className="card" style={{ textAlign: 'center', maxWidth: '400px' }}>
+          <p style={{ color: colors.gray, marginBottom: spacing.lg }}>
+            Please log in to access your account and make payments
+          </p>
+          
+          <button
+            onClick={handleLogin}
+            className="btn btn-primary"
+            style={{
+              ...buttonStyles.primary,
+              width: '100%',
+              padding: '12px'
+            }}
+          >
+            Login with Azure AD B2C
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

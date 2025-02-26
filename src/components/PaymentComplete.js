@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStripe } from '@stripe/react-stripe-js';
-import '../styles/PaymentComplete.css';
+import { colors, containerStyles, spacing } from '../styles/shared';
+import Loading from './shared/Loading';
 
 const PaymentComplete = () => {
     const stripe = useStripe();
@@ -131,48 +132,51 @@ const PaymentComplete = () => {
         });
     }, [stripe]);
 
+    if (!stripe) return <Loading message="Initializing payment system..." />;
+
     return (
-        <div className="payment-complete" style={{ maxWidth: '600px', margin: '40px auto', padding: '20px' }}>
-            <h1 style={{ marginBottom: '20px' }}>Payment Status</h1>
-            
-            <div style={{ 
-                padding: '20px', 
-                borderRadius: '8px',
-                backgroundColor: 
-                    status.type === 'success' ? '#d4edda' : 
-                    status.type === 'error' ? '#f8d7da' : '#cce5ff',
-                color: 
-                    status.type === 'success' ? '#155724' : 
-                    status.type === 'error' ? '#721c24' : '#004085',
-                marginBottom: '20px'
-            }}>
-                <p style={{ fontSize: '18px' }}>{status.message}</p>
-            </div>
-            
-            {paymentDetails && (
-                <div style={{ marginTop: '20px' }}>
-                    <h2>Payment Details</h2>
-                    <p><strong>Amount:</strong> ${paymentDetails.amount}</p>
-                    <p><strong>Date:</strong> {paymentDetails.date}</p>
-                    <p><strong>Transaction ID:</strong> {paymentDetails.id}</p>
-                    <p><strong>Property:</strong> {paymentDetails.property}</p>
+        <div className="page-container fade-in">
+            <div style={containerStyles}>
+                <h1 style={{ color: colors.dark, marginBottom: spacing.xl }}>
+                    Payment Status
+                </h1>
+
+                <div className="card" style={{
+                    backgroundColor: 
+                        status.type === 'success' ? '#f8fff8' :
+                        status.type === 'error' ? '#fff8f8' : '#f8f9fa'
+                }}>
+                    <div style={{ 
+                        color: 
+                            status.type === 'success' ? colors.success :
+                            status.type === 'error' ? colors.danger : colors.primary,
+                        textAlign: 'center',
+                        marginBottom: spacing.lg
+                    }}>
+                        <p style={{ fontSize: '18px' }}>{status.message}</p>
+                    </div>
+
+                    {paymentDetails && (
+                        <div style={{ marginTop: spacing.lg }}>
+                            <h2 style={{ color: colors.gray, marginBottom: spacing.md }}>
+                                Payment Details
+                            </h2>
+                            <p><strong>Amount:</strong> ${paymentDetails.amount}</p>
+                            <p><strong>Date:</strong> {paymentDetails.date}</p>
+                            <p><strong>Transaction ID:</strong> {paymentDetails.id}</p>
+                            <p><strong>Property:</strong> {paymentDetails.property}</p>
+                        </div>
+                    )}
+
+                    <button
+                        onClick={() => navigate('/')}
+                        className="btn btn-primary"
+                        style={{ width: '100%', marginTop: spacing.xl }}
+                    >
+                        Return to Account
+                    </button>
                 </div>
-            )}
-            
-            <button
-                onClick={() => navigate('/')}
-                style={{
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    padding: '10px 20px',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    marginTop: '20px'
-                }}
-            >
-                Return to Account
-            </button>
+            </div>
         </div>
     );
 };
