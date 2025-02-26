@@ -1,5 +1,6 @@
 const sql = require('mssql');
 
+// Database configuration
 const config = {
     server: process.env.SQL_SERVER,
     database: process.env.SQL_DATABASE,
@@ -10,6 +11,7 @@ const config = {
     }
 };
 
+// Authentication check using x-ms-client-principal header
 module.exports = async function (context, req) {
     let connection;
     try {
@@ -23,6 +25,7 @@ module.exports = async function (context, req) {
             return;
         }
 
+        // Extracts payment details from request body
         const { paymentIntentId, status, amount, tenantId } = req.body;
         
         // Add validation for required fields
