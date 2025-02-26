@@ -23,7 +23,7 @@ module.exports = async function (context, req) {
             return;
         }
 
-        const { paymentIntentId, status } = req.body;
+        const { paymentIntentId, status, amount, tenantId } = req.body;
 
         if (!paymentIntentId || !status) {
             context.res = {
@@ -34,23 +34,45 @@ module.exports = async function (context, req) {
         }
 
         context.log.info(`Payment update request received: ${JSON.stringify(req.body)}`);
-
-        context.log.info(`Updating payment status for: ${paymentIntentId} to ${status}`);
+        context.log.info(`Processing payment status for: ${paymentIntentId} to ${status}`);
         
         connection = await sql.connect(config);
         
-        // Update RentPayments status
-        await sql.query`
-            UPDATE RentPayments
-            SET Status = ${status}
+        // First check if the record exists
+        const existingRecord = await sql.query`
+            SELECT COUNT(*) as count 
+            FROM RentPayments 
             WHERE StripePaymentId = ${paymentIntentId}
         `;
-        
-        const updateResult = await sql.query`
-            SELECT COUNT(*) as count FROM RentPayments 
-            WHERE StripePaymentId = ${paymentIntentId}
-        `;
-        context.log.info(`RentPayments updated: ${updateResult.recordset[0].count} rows`);
+
+        if (existingRecord.recordset[0].count === 0) {
+            // No existing record, perform INSERT
+            context.log.info(`No existing record found for ${paymentIntentId}, creating new record`);
+            await sql.query`
+                INSERT INTO RentPayments (
+                    TenantId,
+                    Amount,
+                    PaymentDate,
+                    Status,
+                    StripePaymentId
+                )
+                VALUES (
+                    ${tenantId},
+                    ${amount},
+                    GETDATE(),
+                    ${status},
+                    ${paymentIntentId}
+                )
+            `;
+        } else {
+            // Record exists, perform UPDATE
+            context.log.info(`Updating existing record for ${paymentIntentId}`);
+            await sql.query`
+                UPDATE RentPayments
+                SET Status = ${status}
+                WHERE StripePaymentId = ${paymentIntentId}
+            `;
+        }
         
         // If payment succeeded, add to PaymentHistory
         if (status === 'succeeded') {
@@ -93,9 +115,8 @@ module.exports = async function (context, req) {
                     context.log.info(`Payment history created: ${JSON.stringify(historyResult.recordset[0])}`);
                 } catch (historyError) {
                     context.log.error('Error creating payment history:', historyError);
+                    throw historyError; // Re-throw to ensure transaction fails
                 }
-            } else {
-                context.log.warn(`No payment record found for: ${paymentIntentId}`);
             }
         }
         
