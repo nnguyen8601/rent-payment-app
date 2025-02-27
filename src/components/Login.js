@@ -3,7 +3,14 @@ import { colors, containerStyles, buttonStyles } from '../styles/shared';
 
 const Login = () => {
   const handleLogin = () => {
-    window.location.href = '/.auth/login/aadb2c';
+    // Get the current URL for redirect
+    const currentOrigin = window.location.origin;
+    
+    // Construct the login URL with post_login_redirect_uri
+    const loginUrl = `/.auth/login/aadb2c?post_login_redirect_uri=${encodeURIComponent(currentOrigin)}`;
+    
+    // Redirect to the login URL
+    window.location.href = loginUrl;
   };
 
   return (
@@ -16,12 +23,12 @@ const Login = () => {
         justifyContent: 'center',
         minHeight: '60vh',
       }}>
-        <h1 style={{ color: colors.dark, marginBottom: spacing.xl }}>
+        <h1 style={{ color: colors.dark, marginBottom: '32px' }}>
           Welcome to Rent Payment Portal
         </h1>
         
         <div className="card" style={{ textAlign: 'center', maxWidth: '400px' }}>
-          <p style={{ color: colors.gray, marginBottom: spacing.lg }}>
+          <p style={{ color: colors.gray, marginBottom: '24px' }}>
             Please log in to access your account and make payments
           </p>
           

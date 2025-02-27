@@ -20,14 +20,25 @@ const App = () => {
 
     useEffect(() => {
         // Check authentication status
-        fetch('/.auth/me')
-            .then(response => response.json())
-            .then(data => {
+        const checkAuth = async () => {
+            try {
+                const response = await fetch('/.auth/me');
+                const data = await response.json();
                 setIsAuthenticated(!!data.clientPrincipal);
-            })
-            .catch(() => {
+            } catch (error) {
+                console.error('Auth check failed:', error);
                 setIsAuthenticated(false);
-            });
+            }
+        };
+
+        checkAuth();
+
+        // Add event listener for auth changes
+        window.addEventListener('auth-state-changed', checkAuth);
+
+        return () => {
+            window.removeEventListener('auth-state-changed', checkAuth);
+        };
     }, []);
 
     // Show loading state while checking authentication
