@@ -19,13 +19,6 @@
             "responseType": "code"
           }
         }
-      },
-      "azureActiveDirectory": {
-        "registration": {
-          "openIdIssuer": "https://caritasfamilyb2c.b2clogin.com/24cf5eb9-310d-42a7-9373-7d624bb28e27/v2.0/",
-          "clientIdSettingName": "AZURE_CLIENT_ID",
-          "clientSecretSettingName": "AZURE_CLIENT_SECRET"
-        }
       }
     }
   },
