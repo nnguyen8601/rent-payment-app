@@ -15,27 +15,6 @@ console.log('Environment:', process.env.NODE_ENV);
 console.log('Stripe Key Length:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.length);
 console.log('Stripe Key Prefix:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.substring(0, 7));
 
-// Initialize Stripe with publishable key
-const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
-
-// Add this for debugging
-console.log('Stripe initialized:', !!stripePromise);
-console.log('Stripe Key Present:', !!process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
-
-// Configure Stripe Elements
-const options = {
-    mode: 'payment',
-    amount: 1099,
-    currency: 'usd',
-    // Customize the appearance
-    appearance: {
-        theme: 'stripe',
-        variables: {
-            colorPrimary: '#007bff',
-        },
-    },
-};
-
 const App = () => {
     const [isAuthenticated, setIsAuthenticated] = useState(null);
 
@@ -55,6 +34,22 @@ const App = () => {
     if (isAuthenticated === null) {
         return <div>Loading...</div>;
     }
+
+    // Initialize Stripe with publishable key
+    const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+    // Configure Stripe Elements - moved inside component
+    const options = {
+        mode: 'payment',
+        amount: 1099,
+        currency: 'usd',
+        appearance: {
+            theme: 'stripe',
+            variables: {
+                colorPrimary: '#007bff',
+            },
+        },
+    };
 
     return (
         <Router>
