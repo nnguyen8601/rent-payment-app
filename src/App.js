@@ -1,103 +1,127 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Elements } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
-import PaymentForm from './components/PaymentForm';
-import PaymentComplete from './components/PaymentComplete';
+import styled, { ThemeProvider } from 'styled-components';
+import { theme } from './styles/theme/theme';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Navigation from './components/layout/Navigation';
+import Dashboard from './components/dashboard/Dashboard';
+import PaymentWizard from './components/payments/PaymentWizard/PaymentWizard';
 import Login from './components/Login';
-import Logout from './components/Logout';
-import UserAccount from './components/UserAccount';
 import Registration from './components/Registration';
-import './styles/App.css';
+import UserAccount from './components/UserAccount';
+import { GlobalStyles } from './styles/GlobalStyles';
 
-// Add more detailed logging
-console.log('Environment:', process.env.NODE_ENV);
-console.log('Stripe Key Length:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.length);
-console.log('Stripe Key Prefix:', process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY?.substring(0, 7));
+const AppContainer = styled.div`
+  min-height: 100vh;
+  background-color: ${theme.colors.neutral.light};
+`;
+
+const MainContent = styled.main`
+  padding-top: calc(64px + ${theme.spacing.xl}); // Navigation height + padding
+  padding-bottom: ${theme.spacing.xl};
+  min-height: calc(100vh - 64px); // Full height minus navigation
+`;
+
+const LoadingScreen = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: ${theme.colors.neutral.light};
+  color: ${theme.colors.primary.main};
+  font-size: ${theme.typography.fontSize.xl};
+`;
+
+const PrivateRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingScreen>Loading...</LoadingScreen>;
+  }
+
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Router>
+      <AppContainer>
+        {isAuthenticated && <Navigation />}
+        <MainContent>
+          <Routes>
+            <Route
+              path="/"
+              element={
+                isAuthenticated ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Navigate to="/login" replace />
+                )
+              }
+            />
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <Dashboard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/payment"
+              element={
+                <PrivateRoute>
+                  <PaymentWizard />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/account"
+              element={
+                <PrivateRoute>
+                  <UserAccount />
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                isAuthenticated ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Login />
+                )
+              }
+            />
+            <Route
+              path="/register"
+              element={
+                isAuthenticated ? (
+                  <Navigate to="/dashboard" replace />
+                ) : (
+                  <Registration />
+                )
+              }
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </MainContent>
+      </AppContainer>
+    </Router>
+  );
+};
 
 const App = () => {
-    const [isAuthenticated, setIsAuthenticated] = useState(null);
-
-    useEffect(() => {
-        // Check authentication status
-        const checkAuth = async () => {
-            try {
-                const response = await fetch('/.auth/me');
-                const data = await response.json();
-                setIsAuthenticated(!!data.clientPrincipal);
-            } catch (error) {
-                console.error('Auth check failed:', error);
-                setIsAuthenticated(false);
-            }
-        };
-
-        checkAuth();
-
-        // Add event listener for auth changes
-        window.addEventListener('auth-state-changed', checkAuth);
-
-        return () => {
-            window.removeEventListener('auth-state-changed', checkAuth);
-        };
-    }, []);
-
-    // Show loading state while checking authentication
-    if (isAuthenticated === null) {
-        return <div>Loading...</div>;
-    }
-
-    // Initialize Stripe with publishable key
-    const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
-
-    // Configure Stripe Elements - moved inside component
-    const options = {
-        mode: 'payment',
-        amount: 1099,
-        currency: 'usd',
-        appearance: {
-            theme: 'stripe',
-            variables: {
-                colorPrimary: '#007bff',
-            },
-        },
-    };
-
-    return (
-        <Router>
-            <div className="App">
-                {isAuthenticated ? (
-                    <>
-                        <Logout />
-                        <Routes>
-                            <Route path="/" element={<UserAccount />} />
-                            <Route path="/register" element={<Registration />} />
-                            <Route 
-                                path="/payment" 
-                                element={
-                                    <Elements stripe={stripePromise} options={options}>
-                                        <PaymentForm />
-                                    </Elements>
-                                } 
-                            />
-                            <Route 
-                                path="/payment-complete" 
-                                element={
-                                    <Elements stripe={stripePromise} options={options}>
-                                        <PaymentComplete />
-                                    </Elements>
-                                } 
-                            />
-                            <Route path="*" element={<Navigate to="/" replace />} />
-                        </Routes>
-                    </>
-                ) : (
-                    <Routes>
-                        <Route path="*" element={<Login />} />
-                    </Routes>
-                )}
-            </div>
-        </Router>
-    );
+  return (
+    <ThemeProvider theme={theme}>
+      <GlobalStyles />
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ThemeProvider>
+  );
 };
 
 export default App;

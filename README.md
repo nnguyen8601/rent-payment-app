@@ -1,141 +1,145 @@
-# Rent Payment Web App
+# Rent Payment Portal
 
-A React-based web application that enables secure rent payments using Stripe integration and Azure services. The application includes payment processing, transaction tracking, and a user-friendly interface.
+A modern web application for managing rent payments, built with React and styled-components.
+
+## Features
+
+- 🔐 Secure user authentication
+- 💰 Easy rent payment processing
+- 📱 Responsive design for all devices
+- 🎨 Modern and intuitive UI
+- 📊 Payment history tracking
+- 👤 User profile management
+- 🔔 Payment reminders and notifications
 
 ## Tech Stack
 
-- **Frontend**: React.js with Stripe Elements
-- **Backend**: Azure Functions (Node.js)
-- **Database**: Azure SQL Database
-- **Payment Processing**: Stripe API
-- **Hosting**: Azure Static Web Apps
+- React 18
+- React Router v6
+- Styled Components
+- Axios
+- Context API for state management
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+- Node.js (v14 or higher)
+- npm (v6 or higher)
+
+## Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/rent-payment-app.git
+cd rent-payment-app
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Create a .env file in the root directory:
+```bash
+REACT_APP_API_URL=your_api_url_here
+```
+
+4. Start the development server:
+```bash
+npm start
+```
+
+The application will be available at http://localhost:3000
+
+## Environment Variables
+
+The following environment variables are required:
+
+- `REACT_APP_API_URL`: The URL of your backend API
 
 ## Project Structure
 
 ```
-rent-payment-app/
-├── api/                      # Azure Functions backend
-│   ├── ProcessPayment/       # Payment processing function
-│   │   ├── function.json    # Function configuration
-│   │   └── index.js         # Payment logic
-│   ├── UpdatePaymentStatus/ # Status update function
-│   │   ├── function.json    
-│   │   └── index.js        
-│   ├── local.settings.json  # Local development settings
-│   └── package.json         # API dependencies
-├── src/                     # React frontend
-│   ├── components/          # React components
-│   │   ├── PaymentForm.js   # Payment form component
-│   │   └── PaymentComplete.js # Payment confirmation component
-│   ├── styles/              # CSS styles
-│   │   ├── App.css         
-│   │   ├── PaymentForm.css 
-│   │   └── PaymentComplete.css
-│   ├── App.js              # Main React component
-│   └── index.js            # React entry point
-├── public/                  # Static files
-├── package.json            # Frontend dependencies
-└── staticwebapp.config.json # Azure Static Web App config
+src/
+├── components/          # React components
+│   ├── dashboard/      # Dashboard related components
+│   ├── layout/         # Layout components
+│   ├── payments/       # Payment related components
+│   └── shared/         # Shared/reusable components
+├── context/            # React Context providers
+├── services/           # API services
+├── styles/             # Global styles and theme
+│   ├── components/     # Styled components
+│   └── theme/          # Theme configuration
+└── utils/             # Utility functions
 ```
 
-## Prerequisites
+## Available Scripts
 
-1. Node.js (v14 or higher)
-2. Azure CLI
-3. Azure Functions Core Tools
-4. Azure SQL Database instance
-5. Stripe account with API keys
-6. Git
+- `npm start`: Runs the app in development mode
+- `npm test`: Launches the test runner
+- `npm run build`: Builds the app for production
+- `npm run eject`: Ejects from create-react-app
 
-## Setup Instructions
+## API Integration
 
-1. **Clone the Repository**
-   ```bash
-   git clone <repository-url>
-   cd rent-payment-app
-   ```
+The application expects the following API endpoints:
 
-2. **Install Dependencies**
-   ```bash
-   # Install frontend dependencies
-   npm install
+### Authentication
+- POST `/api/auth/login`: User login
+- POST `/api/auth/register`: User registration
+- POST `/api/auth/logout`: User logout
 
-   # Install backend dependencies
-   cd api
-   npm install
-   cd ..
-   ```
+### Payments
+- GET `/api/payments/summary`: Get payment summary
+- GET `/api/payments/history`: Get payment history
+- POST `/api/payments/process`: Process a payment
+- GET `/api/payments/methods`: Get saved payment methods
+- POST `/api/payments/methods`: Save a payment method
+- DELETE `/api/payments/methods/:id`: Delete a payment method
 
-3. **Environment Configuration**
+### User
+- GET `/api/users/profile`: Get user profile
+- PUT `/api/users/profile`: Update user profile
+- PUT `/api/users/password`: Update password
+- POST `/api/users/reset-password`: Request password reset
+- PUT `/api/users/notifications`: Update notification preferences
 
-   Create a `.env` file in the root directory:
-   ```
-   REACT_APP_STRIPE_PUBLISHABLE_KEY=your_stripe_publishable_key
-   ```
+## Contributing
 
-   Create `local.settings.json` in the api directory:
-   ```json
-   {
-     "IsEncrypted": false,
-     "Values": {
-       "FUNCTIONS_WORKER_RUNTIME": "node",
-       "AzureWebJobsStorage": "",
-       "STRIPE_SECRET_KEY": "your_stripe_secret_key",
-       "SQL_SERVER": "your-server.database.windows.net",
-       "SQL_DATABASE": "your-database",
-       "SQL_USER": "your-username",
-       "SQL_PASSWORD": "your-password"
-     }
-   }
-   ```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-4. **Database Setup**
+## Security
 
-   Run the following SQL script to create the required table:
-   ```sql
-   CREATE TABLE RentPayments (
-       Id INT IDENTITY(1,1) PRIMARY KEY,
-       TransactionId NVARCHAR(100) NOT NULL,
-       RenterName NVARCHAR(255) NOT NULL,
-       RentLocation NVARCHAR(500) NOT NULL,
-       Amount DECIMAL(10,2) NOT NULL,
-       PaymentDate DATETIME NOT NULL,
-       Status NVARCHAR(50) NOT NULL,
-       StripePaymentId NVARCHAR(100) NOT NULL,
-       ZipCode NVARCHAR(10) NOT NULL,
-       CreatedAt DATETIME DEFAULT GETDATE(),
-       UpdatedAt DATETIME DEFAULT GETDATE()
-   );
-   ```
+This application implements several security measures:
 
-5. **Running Locally**
-   ```bash
-   # Start the frontend
-   npm start
+- JWT-based authentication
+- Protected routes
+- Input validation
+- Secure password handling
+- HTTPS-only API communication
+- XSS protection
+- CSRF protection
 
-   # In a separate terminal, start the API
-   cd api
-   func start
-   ```
+## Browser Support
 
-   The application will be available at `http://localhost:3000`
+The application supports all modern browsers:
 
-## Deployment
+- Chrome (latest)
+- Firefox (latest)
+- Safari (latest)
+- Edge (latest)
 
-The application is configured for deployment to Azure Static Web Apps using GitHub Actions. The workflow file is included in `.github/workflows/`.
+## License
 
-To deploy:
-1. Create an Azure Static Web App resource
-2. Configure the following secrets in your GitHub repository:
-   - AZURE_STATIC_WEB_APPS_API_TOKEN
-   - REACT_APP_STRIPE_PUBLISHABLE_KEY
-   - Other environment variables as needed
+This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Features
+## Acknowledgments
 
-- Secure payment processing with Stripe
-- Real-time payment status updates
-- Transaction history in Azure SQL Database
-- Responsive design
-- Error handling and validation
-- Payment confirmation page
+- React team for the amazing framework
+- Styled Components team for the styling solution
+- The open-source community for various tools and libraries

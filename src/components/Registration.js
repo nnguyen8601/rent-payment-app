@@ -1,192 +1,298 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { colors, containerStyles, spacing } from '../styles/shared';
-import Loading from './shared/Loading';
-import Error from './shared/Error';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import styled from 'styled-components';
+import { Card, CardHeader, CardContent } from '../styles/components/Card';
+import { Input, InputWrapper, Label, ErrorMessage } from '../styles/components/Input';
+import { Button } from '../styles/components/Button';
+import { theme } from '../styles/theme/theme';
+import { useAuth } from '../context/AuthContext';
+
+const RegisterContainer = styled.div`
+  max-width: 500px;
+  margin: 0 auto;
+  padding: ${theme.spacing.md};
+`;
+
+const Logo = styled.div`
+  text-align: center;
+  margin-bottom: ${theme.spacing.xl};
+  
+  h1 {
+    color: ${theme.colors.primary.main};
+    font-size: ${theme.typography.fontSize['3xl']};
+    margin-bottom: ${theme.spacing.xs};
+  }
+  
+  p {
+    color: ${theme.colors.neutral.main};
+    font-size: ${theme.typography.fontSize.base};
+  }
+`;
+
+const StyledCard = styled(Card)`
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+  }
+`;
 
 const Registration = () => {
   const navigate = useNavigate();
-  const [userInfo, setUserInfo] = useState({
-    email: '',
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
     firstName: '',
-    lastName: ''
+    lastName: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    apartmentNumber: '',
+    phoneNumber: ''
   });
-  const [properties, setProperties] = useState([]);
-  const [selectedProperty, setSelectedProperty] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-  const [claimsDebug, setClaimsDebug] = useState('');
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    async function initialize() {
-      try {
-        // Get user info from B2C
-        const authResponse = await fetch('/.auth/me');
-        const authData = await authResponse.json();
-        console.log('Full auth data:', authData);
-        
-        if (!authData.clientPrincipal) {
-          throw new Error('Not authenticated');
-        }
-        
-        // Debug claims
-        if (authData.clientPrincipal?.claims) {
-          setClaimsDebug(JSON.stringify(authData.clientPrincipal.claims, null, 2));
-        }
-        
-        // Extract name claims
-        const firstNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'extension_FirstName'
-        );
-        
-        const lastNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'extension_LastName' || 
-                 claim.typ === 'LastName' || 
-                 claim.typ.includes('surname')
-        );
-        
-        const emailClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'emails'
-        );
-        
-        setUserInfo({
-          firstName: firstNameClaim ? firstNameClaim.val : '',
-          lastName: lastNameClaim ? lastNameClaim.val : '',
-          email: emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails
-        });
-        
-        // Fetch properties list
-        const propertiesResponse = await fetch('/api/get-properties');
-        if (!propertiesResponse.ok) {
-          throw new Error('Failed to load properties');
-        }
-        
-        const propertiesData = await propertiesResponse.json();
-        setProperties(propertiesData);
-      } catch (err) {
-        console.error('Error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.firstName) {
+      newErrors.firstName = 'First name is required';
     }
     
-    initialize();
-  }, []);
+    if (!formData.lastName) {
+      newErrors.lastName = 'Last name is required';
+    }
+    
+    if (!formData.email) {
+      newErrors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+      newErrors.email = 'Please enter a valid email address';
+    }
+    
+    if (!formData.password) {
+      newErrors.password = 'Password is required';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    }
+    
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
+    if (!formData.apartmentNumber) {
+      newErrors.apartmentNumber = 'Apartment number is required';
+    }
+    
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = 'Please enter a valid 10-digit phone number';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!userInfo.firstName || !userInfo.lastName || !userInfo.email || !selectedProperty) {
-      setError('Please fill in all required fields');
+    if (!validateForm()) {
       return;
     }
     
-    setSubmitting(true);
-    setError(null);
+    setIsLoading(true);
     
     try {
-      const response = await fetch('/api/save-user-data', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: userInfo.email,
-          firstName: userInfo.firstName,
-          lastName: userInfo.lastName,
-          propertyId: selectedProperty
-        })
+      // Format phone number before sending
+      const formattedData = {
+        ...formData,
+        phoneNumber: formData.phoneNumber.replace(/\D/g, '')
+      };
+      delete formattedData.confirmPassword;
+
+      await register(formattedData);
+      navigate('/dashboard');
+    } catch (error) {
+      setErrors({
+        submit: error.message || 'Failed to register. Please try again.'
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
-      
-      // Redirect to user account page
-      navigate('/');
-    } catch (err) {
-      setError(err.message);
     } finally {
-      setSubmitting(false);
+      setIsLoading(false);
     }
   };
-  
-  if (loading) return <Loading message="Loading registration form..." />;
 
   return (
-    <div className="page-container fade-in">
-      <div style={containerStyles}>
-        <h1 style={{ color: colors.dark, marginBottom: spacing.xl }}>
-          Complete Your Registration
-        </h1>
-
-        <div className="card">
+    <RegisterContainer>
+      <Logo>
+        <h1>Rent Payment Portal</h1>
+        <p>Create your account to get started.</p>
+      </Logo>
+      
+      <StyledCard>
+        <CardHeader>
+          <h2>Register</h2>
+        </CardHeader>
+        
+        <CardContent>
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>First Name</label>
-              <input 
-                type="text"
-                value={userInfo.firstName}
-                onChange={(e) => setUserInfo({...userInfo, firstName: e.target.value})}
-                className="form-control"
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Last Name</label>
-              <input 
-                type="text"
-                value={userInfo.lastName}
-                onChange={(e) => setUserInfo({...userInfo, lastName: e.target.value})}
-                className="form-control"
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Email</label>
-              <input 
+            <FormGrid>
+              <InputWrapper>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  placeholder="Enter your first name"
+                  error={errors.firstName}
+                  autoComplete="given-name"
+                />
+                {errors.firstName && <ErrorMessage>{errors.firstName}</ErrorMessage>}
+              </InputWrapper>
+
+              <InputWrapper>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  placeholder="Enter your last name"
+                  error={errors.lastName}
+                  autoComplete="family-name"
+                />
+                {errors.lastName && <ErrorMessage>{errors.lastName}</ErrorMessage>}
+              </InputWrapper>
+            </FormGrid>
+
+            <InputWrapper style={{ marginTop: theme.spacing.md }}>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
                 type="email"
-                value={userInfo.email}
-                onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
-                className="form-control"
-                required
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Enter your email"
+                error={errors.email}
+                autoComplete="email"
               />
-            </div>
-            
-            <div className="form-group">
-              <label>Select Your Property</label>
-              <select
-                value={selectedProperty}
-                onChange={(e) => setSelectedProperty(e.target.value)}
-                className="form-control"
-                required
-              >
-                <option value="">-- Select a property --</option>
-                {properties.map(property => (
-                  <option key={property.id} value={property.id}>
-                    {property.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            
-            {error && <Error message={error} />}
-            
-            <button 
-              type="submit" 
-              disabled={submitting}
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: spacing.lg }}
+              {errors.email && <ErrorMessage>{errors.email}</ErrorMessage>}
+            </InputWrapper>
+
+            <FormGrid style={{ marginTop: theme.spacing.md }}>
+              <InputWrapper>
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Create a password"
+                  error={errors.password}
+                  autoComplete="new-password"
+                />
+                {errors.password && <ErrorMessage>{errors.password}</ErrorMessage>}
+              </InputWrapper>
+
+              <InputWrapper>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  placeholder="Confirm your password"
+                  error={errors.confirmPassword}
+                  autoComplete="new-password"
+                />
+                {errors.confirmPassword && <ErrorMessage>{errors.confirmPassword}</ErrorMessage>}
+              </InputWrapper>
+            </FormGrid>
+
+            <FormGrid style={{ marginTop: theme.spacing.md }}>
+              <InputWrapper>
+                <Label htmlFor="apartmentNumber">Apartment Number</Label>
+                <Input
+                  id="apartmentNumber"
+                  type="text"
+                  name="apartmentNumber"
+                  value={formData.apartmentNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter apartment number"
+                  error={errors.apartmentNumber}
+                  autoComplete="address-line2"
+                />
+                {errors.apartmentNumber && <ErrorMessage>{errors.apartmentNumber}</ErrorMessage>}
+              </InputWrapper>
+
+              <InputWrapper>
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter phone number"
+                  error={errors.phoneNumber}
+                  autoComplete="tel"
+                />
+                {errors.phoneNumber && <ErrorMessage>{errors.phoneNumber}</ErrorMessage>}
+              </InputWrapper>
+            </FormGrid>
+
+            {errors.submit && (
+              <ErrorMessage style={{ marginTop: theme.spacing.md }}>
+                {errors.submit}
+              </ErrorMessage>
+            )}
+
+            <Button
+              type="submit"
+              style={{ width: '100%', marginTop: theme.spacing.lg }}
+              isLoading={isLoading}
             >
-              {submitting ? 'Submitting...' : 'Complete Registration'}
-            </button>
+              Create Account
+            </Button>
           </form>
-        </div>
+        </CardContent>
+      </StyledCard>
+
+      <div style={{ textAlign: 'center' }}>
+        Already have an account?{' '}
+        <Link to="/login" style={{ color: theme.colors.primary.main }}>
+          Login here
+        </Link>
       </div>
-    </div>
+    </RegisterContainer>
   );
 };
 
