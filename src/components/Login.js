@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { Card, CardHeader, CardContent, CardFooter } from '../styles/components/Card';
+import { Card, CardHeader, CardContent } from '../styles/components/Card';
 import { Input, InputWrapper, Label, ErrorMessage } from '../styles/components/Input';
 import { Button } from '../styles/components/Button';
 import { theme } from '../styles/theme/theme';

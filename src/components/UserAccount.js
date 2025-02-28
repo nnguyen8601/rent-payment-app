@@ -1,129 +1,239 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Loading from './shared/Loading';
-import Error from './shared/Error';
-import { colors, containerStyles } from '../styles/shared';
+import styled from 'styled-components';
+import { Card, CardHeader, CardContent } from '../styles/components/Card';
+import { Input, InputWrapper, Label, ErrorMessage } from '../styles/components/Input';
+import { Button } from '../styles/components/Button';
+import { theme } from '../styles/theme/theme';
+import { useAuth } from '../context/AuthContext';
+import UserService from '../services/user.service';
+
+const AccountContainer = styled.div`
+  max-width: 800px;
+  margin: 0 auto;
+  padding: ${theme.spacing.md};
+`;
+
+const StyledCard = styled(Card)`
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+const FormGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+  }
+`;
 
 const UserAccount = () => {
-  const navigate = useNavigate();
-  const [userData, setUserData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { user } = useAuth();
+  const [formData, setFormData] = useState({
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    phoneNumber: user?.phoneNumber || '',
+    apartmentNumber: user?.apartmentNumber || ''
+  });
+  const [errors, setErrors] = useState({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
-    async function loadUserData() {
-      try {
-        // Get auth data from B2C
-        const authResponse = await fetch('/.auth/me');
-        const authData = await authResponse.json();
-        
-        if (!authData.clientPrincipal) {
-          throw new Error('Not authenticated');
-        }
+    loadUserProfile();
+  }, []);
 
-        // Extract email from claims - update to match your B2C configuration
-        const emailClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'Email Addresses' || 
-                 claim.typ === 'emails' || 
-                 claim.typ === 'email'
-        );
-        
-        // Extract name from claims
-        const firstNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'FirstName' || 
-                 claim.typ === 'given_name'
-        );
+  const loadUserProfile = async () => {
+    try {
+      const profile = await UserService.getUserProfile();
+      setFormData({
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        email: profile.email || '',
+        phoneNumber: profile.phoneNumber || '',
+        apartmentNumber: profile.apartmentNumber || ''
+      });
+    } catch (error) {
+      setErrors({ submit: 'Failed to load user profile' });
+    }
+  };
 
-        const lastNameClaim = authData.clientPrincipal.claims.find(
-          claim => claim.typ === 'LastName' || 
-                 claim.typ === 'family_name'
-        );
-        
-        // If claims are found, use them to set user information
-        const email = emailClaim ? emailClaim.val : authData.clientPrincipal.userDetails;
-        console.log("Using email:", email);
-        
-        // Try to get user data
-        const response = await fetch(`/api/get-user-data?email=${encodeURIComponent(email)}`);
-        
-        if (response.status === 404) {
-          // User needs to register
-          console.log("User not found, redirecting to registration");
-          navigate('/register');
-          return;
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch user data');
-        }
-        
-        const data = await response.json();
-        setUserData(data);
-      } catch (err) {
-        console.error('Error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    if (errors[name]) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.firstName) {
+      newErrors.firstName = 'First name is required';
     }
     
-    loadUserData();
-  }, [navigate]);
-  
-  if (loading) return <Loading message="Loading your account information..." />;
-  if (error) return <Error message={error} />;
-  if (!userData) return null;
+    if (!formData.lastName) {
+      newErrors.lastName = 'Last name is required';
+    }
+    
+    if (!formData.phoneNumber) {
+      newErrors.phoneNumber = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
+      newErrors.phoneNumber = 'Please enter a valid 10-digit phone number';
+    }
+    
+    if (!formData.apartmentNumber) {
+      newErrors.apartmentNumber = 'Apartment number is required';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsLoading(true);
+    setSuccessMessage('');
+    
+    try {
+      await UserService.updateUserProfile(formData);
+      setSuccessMessage('Profile updated successfully!');
+    } catch (error) {
+      setErrors({
+        submit: error.message || 'Failed to update profile. Please try again.'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <div className="page-container fade-in">
-      <div style={containerStyles}>
-        <h1 style={{ marginBottom: '24px', color: colors.dark }}>
-          Welcome, {userData.firstName} {userData.lastName}
-        </h1>
+    <AccountContainer>
+      <StyledCard>
+        <CardHeader>
+          <h2>Account Settings</h2>
+        </CardHeader>
         
-        <div className="card">
-          <h2 style={{ color: colors.gray, marginBottom: '16px' }}>
-            Account Information
-          </h2>
-          <p><strong>Email:</strong> {userData.email}</p>
-          <p><strong>Property:</strong> {userData.propertyName}</p>
-        </div>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <FormGrid>
+              <InputWrapper>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  placeholder="Enter your first name"
+                  error={errors.firstName}
+                  autoComplete="given-name"
+                />
+                {errors.firstName && <ErrorMessage>{errors.firstName}</ErrorMessage>}
+              </InputWrapper>
 
-        <div className="card">
-          <h2 style={{ color: colors.gray, marginBottom: '16px' }}>
-            Rent Payment Status
-          </h2>
-          {userData.hasPaidCurrentMonth ? (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              color: colors.success
-            }}>
-              <span style={{ fontSize: '24px', marginRight: '8px' }}>✓</span>
-              <span>Rent paid for this month</span>
-            </div>
-          ) : (
-            <div>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                color: colors.warning,
-                marginBottom: '16px'
-              }}>
-                <span style={{ fontSize: '24px', marginRight: '8px' }}>⚠</span>
-                <span>Rent payment pending for this month</span>
-              </div>
-              <button 
-                className="btn btn-primary"
-                onClick={() => navigate('/payment')}
+              <InputWrapper>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  placeholder="Enter your last name"
+                  error={errors.lastName}
+                  autoComplete="family-name"
+                />
+                {errors.lastName && <ErrorMessage>{errors.lastName}</ErrorMessage>}
+              </InputWrapper>
+            </FormGrid>
+
+            <InputWrapper style={{ marginTop: theme.spacing.md }}>
+              <Label htmlFor="email">Email Address</Label>
+              <Input
+                id="email"
+                type="email"
+                name="email"
+                value={formData.email}
+                disabled
+                autoComplete="email"
+              />
+            </InputWrapper>
+
+            <FormGrid style={{ marginTop: theme.spacing.md }}>
+              <InputWrapper>
+                <Label htmlFor="apartmentNumber">Apartment Number</Label>
+                <Input
+                  id="apartmentNumber"
+                  type="text"
+                  name="apartmentNumber"
+                  value={formData.apartmentNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter apartment number"
+                  error={errors.apartmentNumber}
+                  autoComplete="address-line2"
+                />
+                {errors.apartmentNumber && <ErrorMessage>{errors.apartmentNumber}</ErrorMessage>}
+              </InputWrapper>
+
+              <InputWrapper>
+                <Label htmlFor="phoneNumber">Phone Number</Label>
+                <Input
+                  id="phoneNumber"
+                  type="tel"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange}
+                  placeholder="Enter phone number"
+                  error={errors.phoneNumber}
+                  autoComplete="tel"
+                />
+                {errors.phoneNumber && <ErrorMessage>{errors.phoneNumber}</ErrorMessage>}
+              </InputWrapper>
+            </FormGrid>
+
+            {errors.submit && (
+              <ErrorMessage style={{ marginTop: theme.spacing.md }}>
+                {errors.submit}
+              </ErrorMessage>
+            )}
+
+            {successMessage && (
+              <div
+                style={{
+                  color: theme.colors.success.main,
+                  marginTop: theme.spacing.md,
+                  textAlign: 'center'
+                }}
               >
-                Pay Now
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+                {successMessage}
+              </div>
+            )}
+
+            <Button
+              type="submit"
+              style={{ width: '100%', marginTop: theme.spacing.lg }}
+              isLoading={isLoading}
+            >
+              Save Changes
+            </Button>
+          </form>
+        </CardContent>
+      </StyledCard>
+    </AccountContainer>
   );
 };
 
